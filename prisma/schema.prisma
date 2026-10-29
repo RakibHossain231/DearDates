@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                   String             @id @default(cuid())
+  name                 String
+  email                String             @unique
+  phone                String?            @unique
+  password             String
+  avatar               String?
+  timezone             String             @default("Asia/Dhaka")
+  deliveryNotification Boolean            @default(true)
+  emailVerified        Boolean            @default(false)
+  phoneVerified        Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  wishes               Wish[]
+  verificationCodes    VerificationCode[]
+}
+
+model VerificationCode {
+  id        String   @id @default(cuid())
+  userId    String?
+  target    String   // Email or phone number
+  type      String   // PASSWORD_RESET, EMAIL_VERIFY, PHONE_VERIFY
+  code      String   // 6-digit OTP
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Wish {
+  id               String        @id @default(cuid())
+  userId           String
+  recipientName    String
+  channel          String        // WHATSAPP, SMS, EMAIL, TELEGRAM
+  recipientContact String        // Phone number, email, or chat id
+  scheduledDate    DateTime      // When to send (UTC timestamp)
+  repeat           String        @default("NONE") // NONE, YEARLY, MONTHLY
+  message          String        // User can update/edit anytime!
+  category         String        @default("BIRTHDAY") // BIRTHDAY, ANNIVERSARY, SPECIAL, CUSTOM
+  status           String        @default("PENDING")  // PENDING, SENT, FAILED
+  lastSentAt       DateTime?
+  failureReason    String?
+  autoDeleteAt     DateTime?     // For one-time wishes: lastSentAt + 24 hours
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deliveryLogs     DeliveryLog[]
+}
+
+model DeliveryLog {
+  id            String   @id @default(cuid())
+  wishId        String
+  recipientName String
+  channel       String
+  recipientInfo String
+  status        String   // SUCCESS, FAILED
+  response      String?
+  sentAt        DateTime @default(now())
+
+  wish          Wish     @relation(fields: [wishId], references: [id], onDelete: Cascade)
+}
