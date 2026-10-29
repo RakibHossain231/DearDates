@@ -85,10 +85,16 @@ export async function PUT(
     if (message !== undefined) updateData.message = message.trim();
     if (category) updateData.category = category;
     if (status) updateData.status = status;
-
+    else updateData.status = "PENDING";
+    
+    // Reset cleanup and failure state on re-schedule/update
     const updatedWish = await prisma.wish.update({
       where: { id },
-      data: updateData,
+      data: {
+        ...updateData,
+        autoDeleteAt: null,
+        failureReason: null,
+      },
     });
 
     return NextResponse.json({

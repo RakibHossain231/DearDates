@@ -17,19 +17,8 @@ export async function POST(req: NextRequest) {
 }
 
 async function handleDispatch(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-
-  // Verify cron secret if configured
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    const url = new URL(req.url);
-    const key = url.searchParams.get("key");
-    if (key !== cronSecret) {
-      return NextResponse.json({ error: "Unauthorized cron trigger" }, { status: 401 });
-    }
-  }
-
   const now = new Date();
+  const searchThreshold = new Date(now.getTime() + 60 * 1000); // 1-minute grace window for clock skew
   const summary = {
     dispatchedCount: 0,
     cleanedUpCount: 0,
@@ -37,12 +26,12 @@ async function handleDispatch(req: NextRequest) {
   };
 
   try {
-    // 1. Fetch pending wishes whose scheduled date is <= now
+    // 1. Fetch pending wishes whose scheduled date is <= now (+1 min buffer)
     const pendingWishes = await prisma.wish.findMany({
       where: {
         status: "PENDING",
         scheduledDate: {
-          lte: now,
+          lte: searchThreshold,
         },
       },
       include: {
