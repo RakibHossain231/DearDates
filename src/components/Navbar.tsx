@@ -53,7 +53,7 @@ export default function Navbar() {
           </div>
           <div>
             <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-              AutoWISH
+              DearDates
             </span>
             <span className="hidden sm:inline-block ml-1.5 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
               Never Forget

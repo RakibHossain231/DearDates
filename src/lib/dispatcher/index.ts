@@ -121,7 +121,7 @@ async function sendEmailWish({
       <body>
         <div class="card">
           <div class="header">
-            <span class="badge">AutoWISH Celebration</span>
+            <span class="badge">DearDates Celebration</span>
             <h1>Warm Wishes For You! 🎂✨</h1>
           </div>
           <div class="content">
@@ -132,7 +132,7 @@ async function sendEmailWish({
             <p style="color: #64748b; font-size: 15px;">Sent with warm affection by <strong>${senderName}</strong></p>
           </div>
           <div class="footer">
-            Delivered automatically with care via <strong style="color: #4f46e5;">AutoWISH</strong> • Never miss an important date.
+            Delivered automatically with care via <strong style="color: #4f46e5;">DearDates</strong> • Never miss an important date.
           </div>
         </div>
       </body>
@@ -222,7 +222,7 @@ async function sendTelegramWish({
   senderName: string;
 }): Promise<DispatchResult> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const text = `🎉 *Special Wish for ${recipientName}!*\n\n${message}\n\n— *With love from ${senderName}*\n_Delivered by AutoWISH_`;
+  const text = `🎉 *Special Wish for ${recipientName}!*\n\n${message}\n\n— *With love from ${senderName}*\n_Delivered by DearDates_`;
 
   if (token) {
     try {
@@ -270,7 +270,7 @@ async function sendWhatsAppWish({
   const gatewayUrl = process.env.SMS_GATEWAY_URL;
   const apiKey = process.env.SMS_GATEWAY_API_KEY;
 
-  const formattedMsg = `🎂 *Special Wish for ${recipientName}!*\n\n${message}\n\n— *From ${senderName}* (Delivered via AutoWISH)`;
+  const formattedMsg = `🎂 *Special Wish for ${recipientName}!*\n\n${message}\n\n— *From ${senderName}* (Delivered via DearDates)`;
 
   if (gatewayUrl) {
     try {
@@ -321,7 +321,7 @@ async function sendSmsWish({
   const gatewayUrl = process.env.SMS_GATEWAY_URL;
   const apiKey = process.env.SMS_GATEWAY_API_KEY;
 
-  const smsText = `AutoWISH for ${recipientName}: ${message} - From ${senderName}`;
+  const smsText = `DearDates for ${recipientName}: ${message} - From ${senderName}`;
 
   if (gatewayUrl) {
     try {
@@ -373,7 +373,7 @@ export async function sendOtpCode({
   smtpEmail?: string | null;
   smtpPassword?: string | null;
 }): Promise<boolean> {
-  const message = `Hello ${userName}! Your AutoWISH verification code is: ${code}. Valid for 10 minutes.`;
+  const message = `Hello ${userName}! Your DearDates verification code is: ${code}. Valid for 10 minutes.`;
 
   if (channel === "EMAIL") {
     // If SMTP credentials available
@@ -384,9 +384,9 @@ export async function sendOtpCode({
           auth: { user: smtpEmail, pass: smtpPassword },
         });
         await transporter.sendMail({
-          from: `"AutoWISH Verification" <${smtpEmail}>`,
+          from: `"DearDates Verification" <${smtpEmail}>`,
           to: target,
-          subject: `AutoWISH Verification Code: ${code}`,
+          subject: `DearDates Verification Code: ${code}`,
           text: message,
         });
         return true;
@@ -400,7 +400,7 @@ export async function sendOtpCode({
         await resend.emails.send({
           from: EMAIL_FROM,
           to: target,
-          subject: `Your AutoWISH Verification Code: ${code}`,
+          subject: `Your DearDates Verification Code: ${code}`,
           text: message,
         });
         return true;

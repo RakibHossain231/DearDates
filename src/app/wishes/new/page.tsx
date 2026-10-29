@@ -122,7 +122,7 @@ export default function NewWishPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Schedule a Celebration Wish</h1>
             <p className="text-xs sm:text-sm text-slate-500">
-              Set it once, and let AutoWISH deliver it right on time
+              Set it once, and let DearDates deliver it right on time
             </p>
           </div>
         </div>

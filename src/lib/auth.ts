@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { cookies } from "next/headers";
 import { prisma } from "./prisma";
 
-const JWT_SECRET = process.env.JWT_SECRET || "autowish-default-secret-change-me";
+const JWT_SECRET = process.env.JWT_SECRET || "deardates-default-secret-change-me";
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 10);
@@ -28,7 +28,7 @@ export function verifyToken(token: string): { userId: string; email: string } | 
 export async function getCurrentUser() {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get("autowish_token")?.value;
+    const token = cookieStore.get("deardates_token")?.value || cookieStore.get("autowish_token")?.value;
 
     if (!token) return null;
 

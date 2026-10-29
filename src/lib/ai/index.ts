@@ -15,7 +15,7 @@ export async function generateAiWish(options: WishPromptOptions): Promise<string
   if (apiKey) {
     try {
       const prompt = `
-        You are a warm, thoughtful greeting writer for the AutoWISH app.
+        You are a warm, thoughtful greeting writer for the DearDates app.
         Write a personalized wish based on the following details:
         - Recipient Name: ${recipientName}
         - Relationship: ${relationship}

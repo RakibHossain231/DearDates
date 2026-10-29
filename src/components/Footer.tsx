@@ -8,7 +8,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="flex items-center space-x-1 font-medium">
           <Sparkles className="w-4 h-4 text-amber-500" />
-          <span>AutoWISH &copy; 2026</span>
+          <span>DearDates &copy; 2026</span>
           <span>&mdash; Automated Celebrations & Greetings</span>
         </div>
         <div className="flex items-center space-x-1 text-xs text-slate-400">

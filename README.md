@@ -1,4 +1,4 @@
-# 🎉 AutoWISH - Automated Celebration & Greeting Dispatcher
+# 🎉 DearDates - Automated Celebration & Greeting Dispatcher
 
 > **Never forget a loved one's special day again.**
 > Pre-schedule personalized greetings for birthdays, anniversaries, and holidays. Delivered right on time via WhatsApp, SMS, Email, and Telegram &mdash; 100% automatically.
@@ -67,7 +67,7 @@
 1. **Clone & Install Dependencies:**
    ```bash
    git clone <repo-url>
-   cd AutoWISH
+   cd DearDates
    npm install
    ```
 

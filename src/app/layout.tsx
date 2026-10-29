@@ -5,7 +5,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
-  title: "AutoWISH - Never Forget Important Dates",
+  title: "DearDates - Never Forget Important Dates",
   description: "Automated wishes and celebration messages delivered right on time via WhatsApp, SMS, Email, and Telegram.",
 };
 
