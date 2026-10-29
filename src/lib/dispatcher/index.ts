@@ -3,7 +3,7 @@ import nodemailer from "nodemailer";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
-const EMAIL_FROM = process.env.EMAIL_FROM || "AutoWISH <no-reply@autowish.app>";
+const EMAIL_FROM = process.env.EMAIL_FROM || "DearDates <onboarding@resend.dev>";
 
 export interface SendMessageOptions {
   channel: "EMAIL" | "WHATSAPP" | "SMS" | "TELEGRAM" | string;
@@ -173,11 +173,11 @@ async function sendEmailWish({
     }
   }
 
-  // Option B: Use Resend API if configured
+  // Option B: Use Resend API if configured (Zero setup required for end users!)
   if (resend) {
     try {
       const data = await resend.emails.send({
-        from: `${senderName} via ${EMAIL_FROM}`,
+        from: `${senderName.replace(/[<>"]/g, "")} <onboarding@resend.dev>`,
         to: recipientContact.trim(),
         subject,
         html: htmlContent,
