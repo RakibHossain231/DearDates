@@ -59,6 +59,7 @@ export async function PUT(
       recipientTimezone,
       scheduledDate,
       repeat,
+      deliveryMode,
       message,
       category,
       status,
@@ -71,6 +72,7 @@ export async function PUT(
       recipientTimezone?: string;
       scheduledDate?: Date;
       repeat?: string;
+      deliveryMode?: string;
       message?: string;
       category?: string;
       status?: string;
@@ -82,6 +84,7 @@ export async function PUT(
     if (recipientTimezone) updateData.recipientTimezone = recipientTimezone;
     if (scheduledDate) updateData.scheduledDate = new Date(scheduledDate);
     if (repeat) updateData.repeat = repeat;
+    if (deliveryMode) updateData.deliveryMode = deliveryMode;
     if (message !== undefined) updateData.message = message.trim();
     if (category) updateData.category = category;
     if (status) updateData.status = status;

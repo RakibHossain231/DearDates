@@ -20,6 +20,7 @@ export async function PUT(req: NextRequest) {
   try {
     const {
       name,
+      email,
       phone,
       timezone,
       deliveryNotification,
@@ -33,18 +34,42 @@ export async function PUT(req: NextRequest) {
 
     const updateData: {
       name?: string;
-      phone?: string;
+      email?: string | null;
+      phone?: string | null;
       timezone?: string;
       deliveryNotification?: boolean;
       avatar?: string;
-      senderName?: string;
-      smtpEmail?: string;
-      smtpPassword?: string;
+      senderName?: string | null;
+      smtpEmail?: string | null;
+      smtpPassword?: string | null;
       password?: string;
     } = {};
 
     if (name) updateData.name = name.trim();
-    if (phone !== undefined) updateData.phone = phone.trim();
+    if (email !== undefined) {
+      const cleanEmail = email ? email.trim().toLowerCase() : null;
+      if (cleanEmail) {
+        const existingEmail = await prisma.user.findFirst({
+          where: { email: cleanEmail, id: { not: user.id } },
+        });
+        if (existingEmail) {
+          return NextResponse.json({ error: "Email is already linked to another account" }, { status: 400 });
+        }
+      }
+      updateData.email = cleanEmail;
+    }
+    if (phone !== undefined) {
+      const cleanPhone = phone ? phone.trim() : null;
+      if (cleanPhone) {
+        const existingPhone = await prisma.user.findFirst({
+          where: { phone: cleanPhone, id: { not: user.id } },
+        });
+        if (existingPhone) {
+          return NextResponse.json({ error: "Phone number is already linked to another account" }, { status: 400 });
+        }
+      }
+      updateData.phone = cleanPhone;
+    }
     if (timezone) updateData.timezone = timezone;
     if (deliveryNotification !== undefined) updateData.deliveryNotification = deliveryNotification;
     if (avatar !== undefined) updateData.avatar = avatar;

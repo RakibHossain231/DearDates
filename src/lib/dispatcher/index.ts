@@ -12,7 +12,9 @@ export interface SendMessageOptions {
   message: string;
   category?: string;
   senderName?: string;
-  senderEmail?: string;
+  senderEmail?: string | null;
+  senderPhone?: string | null;
+  deliveryMode?: string; // "DEFAULT" or "PERSONAL_GMAIL"
   smtpEmail?: string | null;
   smtpPassword?: string | null;
 }
@@ -35,6 +37,9 @@ export async function dispatchWish(options: SendMessageOptions): Promise<Dispatc
     message,
     category = "Celebration",
     senderName = "A Loved One",
+    senderEmail,
+    senderPhone,
+    deliveryMode = "DEFAULT",
     smtpEmail,
     smtpPassword,
   } = options;
@@ -48,18 +53,42 @@ export async function dispatchWish(options: SendMessageOptions): Promise<Dispatc
           message,
           category,
           senderName,
+          senderEmail,
+          senderPhone,
+          deliveryMode,
           smtpEmail,
           smtpPassword,
         });
 
       case "TELEGRAM":
-        return await sendTelegramWish({ recipientContact, recipientName, message, senderName });
+        return await sendTelegramWish({
+          recipientContact,
+          recipientName,
+          message,
+          senderName,
+          senderEmail,
+          senderPhone,
+        });
 
       case "WHATSAPP":
-        return await sendWhatsAppWish({ recipientContact, recipientName, message, senderName });
+        return await sendWhatsAppWish({
+          recipientContact,
+          recipientName,
+          message,
+          senderName,
+          senderEmail,
+          senderPhone,
+        });
 
       case "SMS":
-        return await sendSmsWish({ recipientContact, recipientName, message, senderName });
+        return await sendSmsWish({
+          recipientContact,
+          recipientName,
+          message,
+          senderName,
+          senderEmail,
+          senderPhone,
+        });
 
       default:
         return {
@@ -80,7 +109,7 @@ export async function dispatchWish(options: SendMessageOptions): Promise<Dispatc
 }
 
 /**
- * 1. Email Wish Dispatcher (Personal Gmail SMTP or Resend API)
+ * 1. Email Wish Dispatcher (Personal Gmail SMTP or DearDates Cloud via Resend)
  */
 async function sendEmailWish({
   recipientContact,
@@ -88,6 +117,9 @@ async function sendEmailWish({
   message,
   category,
   senderName,
+  senderEmail,
+  senderPhone,
+  deliveryMode = "DEFAULT",
   smtpEmail,
   smtpPassword,
 }: {
@@ -96,10 +128,26 @@ async function sendEmailWish({
   message: string;
   category: string;
   senderName: string;
+  senderEmail?: string | null;
+  senderPhone?: string | null;
+  deliveryMode?: string;
   smtpEmail?: string | null;
   smtpPassword?: string | null;
 }): Promise<DispatchResult> {
   const subject = `🎉 A Special ${category} Wish for You, ${recipientName}!`;
+
+  // Build clean sender contact badge for display inside the email
+  const senderContactList: string[] = [];
+  if (senderEmail) {
+    senderContactList.push(`<span>📧 Email: <a href="mailto:${senderEmail}" style="color: #4f46e5; text-decoration: none; font-weight: 500;">${senderEmail}</a></span>`);
+  }
+  if (senderPhone) {
+    senderContactList.push(`<span>📱 Phone / WhatsApp: <a href="tel:${senderPhone}" style="color: #4f46e5; text-decoration: none; font-weight: 500;">${senderPhone}</a></span>`);
+  }
+
+  const senderContactHtml = senderContactList.length > 0
+    ? `<div style="margin-top: 6px; font-size: 13px; color: #64748b; line-height: 1.6;">${senderContactList.join("<br>")}</div>`
+    : "";
 
   const htmlContent = `
     <!DOCTYPE html>
@@ -113,7 +161,8 @@ async function sendEmailWish({
           .header h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
           .content { padding: 35px 30px; text-align: center; }
           .greeting { font-size: 20px; font-weight: 600; color: #1e293b; margin-bottom: 20px; }
-          .message-box { background: #fdf4ff; border-left: 4px solid #c026d3; padding: 20px; border-radius: 8px; margin: 25px 0; font-size: 17px; line-height: 1.6; color: #334155; text-align: left; white-space: pre-line; }
+          .message-box { background: #fdf4ff; border-left: 4px solid #c026d3; padding: 22px; border-radius: 12px; margin: 25px 0; font-size: 17px; line-height: 1.6; color: #334155; text-align: left; white-space: pre-line; }
+          .sender-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; margin-top: 25px; text-align: left; }
           .footer { background: #f1f5f9; padding: 20px; text-align: center; font-size: 13px; color: #64748b; }
           .badge { display: inline-block; background: #e0e7ff; color: #4338ca; padding: 6px 14px; border-radius: 50px; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 15px; }
         </style>
@@ -129,7 +178,17 @@ async function sendEmailWish({
             <div class="message-box">
               ${message}
             </div>
-            <p style="color: #64748b; font-size: 15px;">Sent with warm affection by <strong>${senderName}</strong></p>
+
+            <!-- Clear Sender Identification Card -->
+            <div class="sender-card">
+              <div style="font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
+                💝 Delivered on behalf of
+              </div>
+              <div style="font-size: 16px; font-weight: 700; color: #1e293b; margin-top: 4px;">
+                ${senderName}
+              </div>
+              ${senderContactHtml}
+            </div>
           </div>
           <div class="footer">
             Delivered automatically with care via <strong style="color: #4f46e5;">DearDates</strong> • Never miss an important date.
@@ -139,8 +198,9 @@ async function sendEmailWish({
     </html>
   `;
 
-  // Option A: Use User's own Gmail SMTP if configured!
-  if (smtpEmail && smtpPassword && smtpEmail.trim() !== "" && smtpPassword.trim() !== "") {
+  // Option A: Use User's own Gmail SMTP if requested or configured
+  const wantsPersonalGmail = deliveryMode === "PERSONAL_GMAIL" || (smtpEmail && smtpPassword && deliveryMode !== "DEFAULT");
+  if (wantsPersonalGmail && smtpEmail && smtpPassword && smtpEmail.trim() !== "" && smtpPassword.trim() !== "") {
     try {
       const transporter = nodemailer.createTransport({
         service: "gmail",
@@ -153,6 +213,7 @@ async function sendEmailWish({
       const info = await transporter.sendMail({
         from: `"${senderName}" <${smtpEmail.trim()}>`,
         to: recipientContact.trim(),
+        replyTo: senderEmail || smtpEmail.trim(),
         subject,
         html: htmlContent,
       });
@@ -160,21 +221,23 @@ async function sendEmailWish({
       return {
         success: true,
         channel: "EMAIL",
-        response: `Sent from your personal Gmail (${smtpEmail}) - MsgID: ${info.messageId}`,
+        response: `Sent directly from your personal Gmail (${smtpEmail}) - MsgID: ${info.messageId}`,
       };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`Gmail SMTP failed for ${smtpEmail}: ${msg}. Falling back to central email service...`);
-      // If Gmail fails (e.g. wrong password or browser auto-fill issue), fall through to Resend so the wish is NOT lost!
+      console.warn(`Gmail SMTP failed for ${smtpEmail}: ${msg}. Falling back to DearDates Cloud delivery...`);
+      // Fallback so the wish is not lost
     }
   }
 
-  // Option B: Use Resend API if configured (Zero setup required for end users!)
+  // Option B: Use DearDates Cloud Delivery via Resend (Default & Zero Setup)
   if (resend) {
     try {
+      const cleanSender = senderName.replace(/[<>"]/g, "").trim() || "DearDates";
       const { data, error } = await resend.emails.send({
-        from: `${senderName.replace(/[<>"]/g, "")} <onboarding@resend.dev>`,
+        from: `${cleanSender} <onboarding@resend.dev>`,
         to: recipientContact.trim(),
+        replyTo: senderEmail || undefined, // Recipient can reply directly to sender!
         subject,
         html: htmlContent,
       });
@@ -191,7 +254,7 @@ async function sendEmailWish({
       return {
         success: true,
         channel: "EMAIL",
-        response: `Sent via Resend (ID: ${data?.id || "OK"})`,
+        response: `Sent via DearDates Cloud Delivery (ID: ${data?.id || "OK"})`,
       };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -199,12 +262,23 @@ async function sendEmailWish({
     }
   }
 
-  // Fallback Simulation notice
+  // Fallback Simulation notice for localhost
   return {
     success: true,
     channel: "EMAIL",
-    response: `Simulated Email to ${recipientContact}. To send real emails, add your Gmail App Password in Profile or RESEND_API_KEY in Vercel.`,
+    response: `Simulated Email to ${recipientContact}. (Sender: ${senderName} <${senderEmail || "cloud"}>)`,
   };
+}
+
+/**
+ * Helper to build text sender info for chat / SMS / Telegram
+ */
+function buildSenderFooter(senderName: string, senderEmail?: string | null, senderPhone?: string | null): string {
+  const parts: string[] = [];
+  if (senderPhone) parts.push(`📱 ${senderPhone}`);
+  if (senderEmail) parts.push(`📧 ${senderEmail}`);
+  const contactText = parts.length > 0 ? ` (${parts.join(" | ")})` : "";
+  return `— *With love from ${senderName}*${contactText}\n_Delivered via DearDates_`;
 }
 
 /**
@@ -215,14 +289,19 @@ async function sendTelegramWish({
   recipientName,
   message,
   senderName,
+  senderEmail,
+  senderPhone,
 }: {
-  recipientContact: string; // Chat ID or username
+  recipientContact: string;
   recipientName: string;
   message: string;
   senderName: string;
+  senderEmail?: string | null;
+  senderPhone?: string | null;
 }): Promise<DispatchResult> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const text = `🎉 *Special Wish for ${recipientName}!*\n\n${message}\n\n— *With love from ${senderName}*\n_Delivered by DearDates_`;
+  const footer = buildSenderFooter(senderName, senderEmail, senderPhone);
+  const text = `🎉 *Special Wish for ${recipientName}!*\n\n${message}\n\n${footer}`;
 
   if (token) {
     try {
@@ -249,7 +328,7 @@ async function sendTelegramWish({
   return {
     success: true,
     channel: "TELEGRAM",
-    response: `Simulated Telegram to ${recipientContact}. (To send real Telegram messages, add TELEGRAM_BOT_TOKEN in Vercel).`,
+    response: `Simulated Telegram to ${recipientContact} from ${senderName}`,
   };
 }
 
@@ -261,16 +340,21 @@ async function sendWhatsAppWish({
   recipientName,
   message,
   senderName,
+  senderEmail,
+  senderPhone,
 }: {
   recipientContact: string;
   recipientName: string;
   message: string;
   senderName: string;
+  senderEmail?: string | null;
+  senderPhone?: string | null;
 }): Promise<DispatchResult> {
   const gatewayUrl = process.env.SMS_GATEWAY_URL;
   const apiKey = process.env.SMS_GATEWAY_API_KEY;
 
-  const formattedMsg = `🎂 *Special Wish for ${recipientName}!*\n\n${message}\n\n— *From ${senderName}* (Delivered via DearDates)`;
+  const footer = buildSenderFooter(senderName, senderEmail, senderPhone);
+  const formattedMsg = `🎂 *Special Wish for ${recipientName}!*\n\n${message}\n\n${footer}`;
 
   if (gatewayUrl) {
     try {
@@ -300,7 +384,7 @@ async function sendWhatsAppWish({
   return {
     success: true,
     channel: "WHATSAPP",
-    response: `Simulated WhatsApp to ${recipientContact}. (Connect Android SMS/WhatsApp gateway or Cloud API to send directly to recipient phone).`,
+    response: `Simulated WhatsApp to ${recipientContact} from ${senderName}`,
   };
 }
 
@@ -312,16 +396,21 @@ async function sendSmsWish({
   recipientName,
   message,
   senderName,
+  senderEmail,
+  senderPhone,
 }: {
   recipientContact: string;
   recipientName: string;
   message: string;
   senderName: string;
+  senderEmail?: string | null;
+  senderPhone?: string | null;
 }): Promise<DispatchResult> {
   const gatewayUrl = process.env.SMS_GATEWAY_URL;
   const apiKey = process.env.SMS_GATEWAY_API_KEY;
 
-  const smsText = `DearDates for ${recipientName}: ${message} - From ${senderName}`;
+  const senderContactInfo = senderPhone || senderEmail || "";
+  const smsText = `DearDates for ${recipientName}: ${message} - From ${senderName}${senderContactInfo ? ` (${senderContactInfo})` : ""}`;
 
   if (gatewayUrl) {
     try {
@@ -351,12 +440,12 @@ async function sendSmsWish({
   return {
     success: true,
     channel: "SMS",
-    response: `Simulated SMS to ${recipientContact} via local gateway`,
+    response: `Simulated SMS to ${recipientContact} from ${senderName}`,
   };
 }
 
 /**
- * OTP Sender for Password Reset & Registration Verification
+ * OTP Sender for Registration & Verification
  */
 export async function sendOtpCode({
   target,
@@ -373,10 +462,46 @@ export async function sendOtpCode({
   smtpEmail?: string | null;
   smtpPassword?: string | null;
 }): Promise<boolean> {
-  const message = `Hello ${userName}! Your DearDates verification code is: ${code}. Valid for 10 minutes.`;
+  const isEmail = channel === "EMAIL" || target.includes("@");
 
-  if (channel === "EMAIL") {
-    // If SMTP credentials available
+  if (isEmail) {
+    const htmlEmail = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px; }
+            .card { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; }
+            .header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 32px 20px; text-align: center; color: #ffffff; }
+            .content { padding: 32px 28px; text-align: center; }
+            .code-box { display: inline-block; background: #f1f5f9; border: 2px dashed #4f46e5; border-radius: 14px; padding: 14px 32px; font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #4338ca; margin: 24px 0; }
+            .footer { background: #f8fafc; padding: 18px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0; }
+          </style>
+        </head>
+        <body>
+          <div class="card">
+            <div class="header">
+              <h2 style="margin: 0; font-size: 24px; font-weight: 800;">DearDates Verification</h2>
+              <p style="margin: 6px 0 0 0; font-size: 14px; opacity: 0.9;">Confirm your account registration</p>
+            </div>
+            <div class="content">
+              <p style="font-size: 16px; color: #1e293b; margin: 0;">Hello <strong>${userName}</strong>,</p>
+              <p style="font-size: 14px; color: #64748b; margin-top: 8px;">Use the 6-digit code below to verify your account. It will expire in 10 minutes.</p>
+              
+              <div class="code-box">${code}</div>
+
+              <p style="font-size: 12px; color: #94a3b8; margin: 0;">If you didn't request this code, you can safely ignore this email.</p>
+            </div>
+            <div class="footer">
+              DearDates • Automated Celebrations & Greetings
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Try custom SMTP if available
     if (smtpEmail && smtpPassword) {
       try {
         const transporter = nodemailer.createTransport({
@@ -386,8 +511,9 @@ export async function sendOtpCode({
         await transporter.sendMail({
           from: `"DearDates Verification" <${smtpEmail}>`,
           to: target,
-          subject: `DearDates Verification Code: ${code}`,
-          text: message,
+          subject: `Your DearDates Verification Code: ${code}`,
+          html: htmlEmail,
+          text: `Hello ${userName}! Your DearDates verification code is: ${code}. Valid for 10 minutes.`,
         });
         return true;
       } catch (e) {
@@ -395,13 +521,15 @@ export async function sendOtpCode({
       }
     }
 
+    // Try Resend Cloud
     if (resend) {
       try {
         await resend.emails.send({
           from: EMAIL_FROM,
           to: target,
           subject: `Your DearDates Verification Code: ${code}`,
-          text: message,
+          html: htmlEmail,
+          text: `Hello ${userName}! Your DearDates verification code is: ${code}. Valid for 10 minutes.`,
         });
         return true;
       } catch (e) {
@@ -409,8 +537,29 @@ export async function sendOtpCode({
       }
     }
 
-    console.log(`[OTP EMAIL SIMULATION] ${target}: ${code}`);
+    console.log(`[OTP EMAIL SIMULATION] Code for ${target}: ${code}`);
     return true;
+  }
+
+  // Phone / WhatsApp / SMS dispatch
+  const gatewayUrl = process.env.SMS_GATEWAY_URL;
+  const apiKey = process.env.SMS_GATEWAY_API_KEY;
+  const otpText = `Your DearDates verification code is ${code}. Valid for 10 minutes.`;
+
+  if (gatewayUrl) {
+    try {
+      await fetch(`${gatewayUrl}/send-sms`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({ phone: target, message: otpText }),
+      });
+      return true;
+    } catch (e) {
+      console.error("Failed to send OTP via SMS gateway:", e);
+    }
   }
 
   console.log(`[OTP ${channel}] Sent to ${target}: ${code}`);

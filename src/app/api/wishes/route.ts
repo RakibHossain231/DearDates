@@ -55,6 +55,7 @@ export async function POST(req: NextRequest) {
       recipientTimezone = "Asia/Dhaka",
       scheduledDate,
       repeat = "NONE",
+      deliveryMode = "DEFAULT",
       message,
       category = "BIRTHDAY",
     } = await req.json();
@@ -80,6 +81,7 @@ export async function POST(req: NextRequest) {
         recipientTimezone,
         scheduledDate: scheduledDateTime,
         repeat,
+        deliveryMode: deliveryMode === "PERSONAL_GMAIL" ? "PERSONAL_GMAIL" : "DEFAULT",
         message: message.trim(),
         category,
         status: "PENDING",

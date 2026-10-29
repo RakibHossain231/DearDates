@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { comparePassword, signToken } from "@/lib/auth";
+import { sendOtpCode } from "@/lib/dispatcher";
 
 export async function POST(req: NextRequest) {
   try {
@@ -31,7 +32,46 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid credentials. Please check your login details." }, { status: 401 });
     }
 
-    const token = signToken({ userId: user.id, email: user.email });
+    // Check if account is verified
+    if (!user.isVerified) {
+      // Generate fresh OTP
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+      await prisma.verificationCode.updateMany({
+        where: { userId: user.id, type: "SIGNUP_VERIFY", used: false },
+        data: { used: true },
+      });
+
+      await prisma.verificationCode.create({
+        data: {
+          userId: user.id,
+          target: cleanIdentifier,
+          type: "SIGNUP_VERIFY",
+          code,
+          expiresAt,
+        },
+      });
+
+      await sendOtpCode({
+        target: cleanIdentifier,
+        channel: user.email ? "EMAIL" : "WHATSAPP",
+        code,
+        userName: user.name,
+      });
+
+      return NextResponse.json({
+        requiresVerification: true,
+        identifier: cleanIdentifier,
+        message: "Your account needs verification. A 6-digit OTP code has been sent.",
+        devCode: process.env.NODE_ENV !== "production" ? code : undefined,
+      });
+    }
+
+    const token = signToken({
+      userId: user.id,
+      email: user.email || user.phone || "user",
+    });
 
     const response = NextResponse.json({
       success: true,
@@ -46,6 +86,7 @@ export async function POST(req: NextRequest) {
         deliveryNotification: user.deliveryNotification,
         emailVerified: user.emailVerified,
         phoneVerified: user.phoneVerified,
+        isVerified: user.isVerified,
       },
     });
 

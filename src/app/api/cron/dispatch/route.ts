@@ -39,6 +39,7 @@ async function handleDispatch(req: NextRequest) {
           select: {
             name: true,
             email: true,
+            phone: true,
             senderName: true,
             smtpEmail: true,
             smtpPassword: true,
@@ -58,6 +59,9 @@ async function handleDispatch(req: NextRequest) {
           message: wish.message,
           category: wish.category,
           senderName: wish.user.senderName || wish.user.name,
+          senderEmail: wish.user.email,
+          senderPhone: wish.user.phone,
+          deliveryMode: wish.deliveryMode,
           smtpEmail: wish.user.smtpEmail,
           smtpPassword: wish.user.smtpPassword,
         });
