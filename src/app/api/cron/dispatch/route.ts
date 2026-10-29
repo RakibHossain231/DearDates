@@ -50,6 +50,9 @@ async function handleDispatch(req: NextRequest) {
           select: {
             name: true,
             email: true,
+            senderName: true,
+            smtpEmail: true,
+            smtpPassword: true,
             deliveryNotification: true,
           },
         },
@@ -65,7 +68,9 @@ async function handleDispatch(req: NextRequest) {
           recipientName: wish.recipientName,
           message: wish.message,
           category: wish.category,
-          senderName: wish.user.name,
+          senderName: wish.user.senderName || wish.user.name,
+          smtpEmail: wish.user.smtpEmail,
+          smtpPassword: wish.user.smtpPassword,
         });
 
         // Record delivery log

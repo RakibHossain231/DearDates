@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 const resendApiKey = process.env.RESEND_API_KEY;
 const resend = resendApiKey ? new Resend(resendApiKey) : null;
@@ -11,6 +12,9 @@ export interface SendMessageOptions {
   message: string;
   category?: string;
   senderName?: string;
+  senderEmail?: string;
+  smtpEmail?: string | null;
+  smtpPassword?: string | null;
 }
 
 export interface DispatchResult {
@@ -24,12 +28,29 @@ export interface DispatchResult {
  * Universal Dispatcher: Sends wish via chosen channel
  */
 export async function dispatchWish(options: SendMessageOptions): Promise<DispatchResult> {
-  const { channel, recipientContact, recipientName, message, category = "Celebration", senderName = "A Loved One" } = options;
+  const {
+    channel,
+    recipientContact,
+    recipientName,
+    message,
+    category = "Celebration",
+    senderName = "A Loved One",
+    smtpEmail,
+    smtpPassword,
+  } = options;
 
   try {
     switch (channel.toUpperCase()) {
       case "EMAIL":
-        return await sendEmailWish({ recipientContact, recipientName, message, category, senderName });
+        return await sendEmailWish({
+          recipientContact,
+          recipientName,
+          message,
+          category,
+          senderName,
+          smtpEmail,
+          smtpPassword,
+        });
 
       case "TELEGRAM":
         return await sendTelegramWish({ recipientContact, recipientName, message, senderName });
@@ -59,7 +80,7 @@ export async function dispatchWish(options: SendMessageOptions): Promise<Dispatc
 }
 
 /**
- * 1. Email Wish Dispatcher (Resend API with HTML template)
+ * 1. Email Wish Dispatcher (Personal Gmail SMTP or Resend API)
  */
 async function sendEmailWish({
   recipientContact,
@@ -67,12 +88,16 @@ async function sendEmailWish({
   message,
   category,
   senderName,
+  smtpEmail,
+  smtpPassword,
 }: {
   recipientContact: string;
   recipientName: string;
   message: string;
   category: string;
   senderName: string;
+  smtpEmail?: string | null;
+  smtpPassword?: string | null;
 }): Promise<DispatchResult> {
   const subject = `🎉 A Special ${category} Wish for You, ${recipientName}!`;
 
@@ -114,11 +139,46 @@ async function sendEmailWish({
     </html>
   `;
 
+  // Option A: Use User's own Gmail SMTP if configured!
+  if (smtpEmail && smtpPassword) {
+    try {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: smtpEmail.trim(),
+          pass: smtpPassword.trim(),
+        },
+      });
+
+      const info = await transporter.sendMail({
+        from: `"${senderName}" <${smtpEmail.trim()}>`,
+        to: recipientContact.trim(),
+        subject,
+        html: htmlContent,
+      });
+
+      return {
+        success: true,
+        channel: "EMAIL",
+        response: `Sent from your personal Gmail (${smtpEmail}) - MsgID: ${info.messageId}`,
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return {
+        success: false,
+        channel: "EMAIL",
+        response: "Gmail SMTP failed",
+        error: `Could not send from ${smtpEmail}: ${msg}. (Make sure 16-char Google App Password is used, not regular Gmail password).`,
+      };
+    }
+  }
+
+  // Option B: Use Resend API if configured
   if (resend) {
     try {
       const data = await resend.emails.send({
-        from: EMAIL_FROM,
-        to: recipientContact,
+        from: `${senderName} via ${EMAIL_FROM}`,
+        to: recipientContact.trim(),
         subject,
         html: htmlContent,
       });
@@ -133,12 +193,11 @@ async function sendEmailWish({
     }
   }
 
-  // Fallback simulation when API key is not yet configured by the user
-  console.log(`[EMAIL SIMULATION] Sent to: ${recipientContact} | Subject: ${subject}`);
+  // Fallback Simulation notice
   return {
     success: true,
     channel: "EMAIL",
-    response: `Simulated Email sent to ${recipientContact} (Configure RESEND_API_KEY in .env for production)`,
+    response: `Simulated Email to ${recipientContact}. To send real emails, add your Gmail App Password in Profile or RESEND_API_KEY in Vercel.`,
   };
 }
 
@@ -165,7 +224,7 @@ async function sendTelegramWish({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          chat_id: recipientContact,
+          chat_id: recipientContact.trim(),
           text,
           parse_mode: "Markdown",
         }),
@@ -181,16 +240,15 @@ async function sendTelegramWish({
     }
   }
 
-  console.log(`[TELEGRAM SIMULATION] Chat ID: ${recipientContact} | Message: ${text}`);
   return {
     success: true,
     channel: "TELEGRAM",
-    response: `Simulated Telegram message sent to ${recipientContact} (Configure TELEGRAM_BOT_TOKEN in .env)`,
+    response: `Simulated Telegram to ${recipientContact}. (To send real Telegram messages, add TELEGRAM_BOT_TOKEN in Vercel).`,
   };
 }
 
 /**
- * 3. WhatsApp Dispatcher (Phone Number based)
+ * 3. WhatsApp Dispatcher
  */
 async function sendWhatsAppWish({
   recipientContact,
@@ -203,10 +261,10 @@ async function sendWhatsAppWish({
   message: string;
   senderName: string;
 }): Promise<DispatchResult> {
-  const gatewayUrl = process.env.SMS_GATEWAY_URL; // Can point to Android WhatsApp/SMS gateway
+  const gatewayUrl = process.env.SMS_GATEWAY_URL;
   const apiKey = process.env.SMS_GATEWAY_API_KEY;
 
-  const formattedMsg = `🎂 *Special Wish for ${recipientName}!*\n\n${message}\n\n— *From ${senderName}* (Sent via AutoWISH)`;
+  const formattedMsg = `🎂 *Special Wish for ${recipientName}!*\n\n${message}\n\n— *From ${senderName}* (Delivered via AutoWISH)`;
 
   if (gatewayUrl) {
     try {
@@ -217,7 +275,7 @@ async function sendWhatsAppWish({
           ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
         },
         body: JSON.stringify({
-          phone: recipientContact,
+          phone: recipientContact.trim(),
           message: formattedMsg,
         }),
       });
@@ -229,16 +287,14 @@ async function sendWhatsAppWish({
       };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      return { success: false, channel: "WHATSAPP", response: "Gateway connection error", error: msg };
+      return { success: false, channel: "WHATSAPP", response: "Gateway error", error: msg };
     }
   }
 
-  // Simulated delivery when gateway not set up
-  console.log(`[WHATSAPP SIMULATION] To: ${recipientContact} | Text: ${formattedMsg}`);
   return {
     success: true,
     channel: "WHATSAPP",
-    response: `Simulated WhatsApp message delivered to ${recipientContact}`,
+    response: `Simulated WhatsApp to ${recipientContact}. (Connect Android SMS/WhatsApp gateway or Cloud API to send directly to recipient phone).`,
   };
 }
 
@@ -270,7 +326,7 @@ async function sendSmsWish({
           ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
         },
         body: JSON.stringify({
-          phone: recipientContact,
+          phone: recipientContact.trim(),
           message: smsText,
         }),
       });
@@ -286,46 +342,71 @@ async function sendSmsWish({
     }
   }
 
-  console.log(`[SMS SIMULATION] To: ${recipientContact} | Text: ${smsText}`);
   return {
     success: true,
     channel: "SMS",
-    response: `Simulated SMS sent to ${recipientContact} via local gateway`,
+    response: `Simulated SMS to ${recipientContact} via local gateway`,
   };
 }
 
 /**
- * OTP Sender for Password Reset & Verification
+ * OTP Sender for Password Reset & Registration Verification
  */
 export async function sendOtpCode({
   target,
   channel,
   code,
+  userName = "Friend",
+  smtpEmail,
+  smtpPassword,
 }: {
   target: string;
   channel: "EMAIL" | "WHATSAPP" | "SMS";
   code: string;
+  userName?: string;
+  smtpEmail?: string | null;
+  smtpPassword?: string | null;
 }): Promise<boolean> {
-  const message = `Your AutoWISH verification code is: ${code}. It is valid for 10 minutes. Do not share this code with anyone.`;
+  const message = `Hello ${userName}! Your AutoWISH verification code is: ${code}. Valid for 10 minutes.`;
 
   if (channel === "EMAIL") {
-    if (resend) {
-      await resend.emails.send({
-        from: EMAIL_FROM,
-        to: target,
-        subject: `Your AutoWISH Verification Code: ${code}`,
-        text: message,
-      });
-      return true;
+    // If SMTP credentials available
+    if (smtpEmail && smtpPassword) {
+      try {
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          auth: { user: smtpEmail, pass: smtpPassword },
+        });
+        await transporter.sendMail({
+          from: `"AutoWISH Verification" <${smtpEmail}>`,
+          to: target,
+          subject: `AutoWISH Verification Code: ${code}`,
+          text: message,
+        });
+        return true;
+      } catch (e) {
+        console.error("Failed to send OTP via SMTP:", e);
+      }
     }
-    console.log(`[OTP EMAIL] ${target}: ${code}`);
+
+    if (resend) {
+      try {
+        await resend.emails.send({
+          from: EMAIL_FROM,
+          to: target,
+          subject: `Your AutoWISH Verification Code: ${code}`,
+          text: message,
+        });
+        return true;
+      } catch (e) {
+        console.error("Resend OTP error:", e);
+      }
+    }
+
+    console.log(`[OTP EMAIL SIMULATION] ${target}: ${code}`);
     return true;
   }
 
-  if (channel === "WHATSAPP" || channel === "SMS") {
-    console.log(`[OTP ${channel}] Sent to ${target}: ${code}`);
-    return true;
-  }
-
-  return false;
+  console.log(`[OTP ${channel}] Sent to ${target}: ${code}`);
+  return true;
 }

@@ -41,6 +41,7 @@ export default function DashboardPage() {
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [cronRunning, setCronRunning] = useState(false);
+  const [testingId, setTestingId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
 
   const fetchWishes = useCallback(async () => {
@@ -76,6 +77,25 @@ export default function DashboardPage() {
     }
   };
 
+  const handleTestSend = async (id: string, name: string) => {
+    setTestingId(id);
+    setStatusMessage("");
+    try {
+      const res = await fetch(`/api/wishes/${id}/test`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setStatusMessage(`✅ Wish dispatched to ${name}! Response: ${data.result?.response || "OK"}`);
+        fetchWishes();
+      } else {
+        setStatusMessage(`❌ Dispatch failed: ${data.result?.error || data.error || "Check your credentials"}`);
+      }
+    } catch {
+      setStatusMessage("Failed to reach server");
+    } finally {
+      setTestingId(null);
+    }
+  };
+
   const handleManualCron = async () => {
     setCronRunning(true);
     setStatusMessage("");
@@ -83,20 +103,21 @@ export default function DashboardPage() {
       const res = await fetch("/api/cron/dispatch", { method: "POST" });
       const data = await res.json();
       if (res.ok) {
-        setStatusMessage(
-          `Cron executed! Dispatched: ${data.summary?.dispatchedCount || 0}, Cleaned up: ${
-            data.summary?.cleanedUpCount || 0
-          }`
-        );
+        const count = data.summary?.dispatchedCount || 0;
+        if (count > 0) {
+          setStatusMessage(`🎉 Cron executed! Successfully dispatched ${count} scheduled wish(es).`);
+        } else {
+          setStatusMessage("🕒 Cron checked: No pending wishes were due for dispatch at this moment.");
+        }
         fetchWishes();
       } else {
-        setStatusMessage(`Cron trigger failed: ${data.error || "Unknown error"}`);
+        setStatusMessage(`Cron trigger error: ${data.error || "Unknown error"}`);
       }
     } catch {
       setStatusMessage("Failed to connect to scheduler");
     } finally {
       setCronRunning(false);
-      setTimeout(() => setStatusMessage(""), 4000);
+      setTimeout(() => setStatusMessage(""), 5000);
     }
   };
 
@@ -355,13 +376,26 @@ export default function DashboardPage() {
 
                 {/* Card Action Footer */}
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <Link
-                    href={`/wishes/edit/${wish.id}`}
-                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1 px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>Edit Message</span>
-                  </Link>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      disabled={testingId === wish.id}
+                      onClick={() => handleTestSend(wish.id, wish.recipientName)}
+                      className="text-xs font-semibold text-emerald-600 hover:text-emerald-800 flex items-center space-x-1 px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors border border-emerald-200/80 disabled:opacity-50"
+                      title="Trigger delivery immediately for testing"
+                    >
+                      <Send className={`w-3.5 h-3.5 ${testingId === wish.id ? "animate-spin" : ""}`} />
+                      <span>{testingId === wish.id ? "Sending..." : "Send Test Now"}</span>
+                    </button>
+
+                    <Link
+                      href={`/wishes/edit/${wish.id}`}
+                      className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1 px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Edit</span>
+                    </Link>
+                  </div>
 
                   <button
                     onClick={() => handleDelete(wish.id, wish.recipientName)}

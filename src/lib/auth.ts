@@ -47,6 +47,9 @@ export async function getCurrentUser() {
         deliveryNotification: true,
         emailVerified: true,
         phoneVerified: true,
+        senderName: true,
+        smtpEmail: true,
+        smtpPassword: true,
         createdAt: true,
       },
     });

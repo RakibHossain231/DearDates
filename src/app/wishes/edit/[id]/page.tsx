@@ -17,9 +17,11 @@ import {
   AlertCircle,
   Repeat,
   RefreshCw,
+  Globe,
 } from "lucide-react";
 import AiWishModal from "@/components/AiWishModal";
 import { format } from "date-fns";
+import { fromZonedTime } from "date-fns-tz";
 
 function EditWishForm() {
   const router = useRouter();
@@ -30,6 +32,7 @@ function EditWishForm() {
   const [recipientName, setRecipientName] = useState("");
   const [channel, setChannel] = useState<"WHATSAPP" | "SMS" | "EMAIL" | "TELEGRAM">("WHATSAPP");
   const [recipientContact, setRecipientContact] = useState("");
+  const [recipientTimezone, setRecipientTimezone] = useState("Asia/Dhaka");
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("00:01");
   const [repeat, setRepeat] = useState<"NONE" | "YEARLY" | "MONTHLY">("YEARLY");
@@ -53,6 +56,7 @@ function EditWishForm() {
           setRecipientName(wish.recipientName);
           setChannel(wish.channel as "WHATSAPP" | "SMS" | "EMAIL" | "TELEGRAM");
           setRecipientContact(wish.recipientContact);
+          if (wish.recipientTimezone) setRecipientTimezone(wish.recipientTimezone);
           setRepeat(wish.repeat as "NONE" | "YEARLY" | "MONTHLY");
           setCategory(wish.category);
           setMessage(wish.message);
@@ -78,7 +82,13 @@ function EditWishForm() {
       return;
     }
 
-    const combinedDateTime = new Date(`${scheduledDate}T${scheduledTime || "00:00"}:00`);
+    let combinedDateTime: Date;
+    try {
+      combinedDateTime = fromZonedTime(`${scheduledDate} ${scheduledTime || "00:00"}:00`, recipientTimezone);
+    } catch {
+      combinedDateTime = new Date(`${scheduledDate}T${scheduledTime || "00:00"}:00`);
+    }
+
     if (isNaN(combinedDateTime.getTime())) {
       setError("Please select a valid date and time");
       return;
@@ -94,6 +104,7 @@ function EditWishForm() {
           recipientName,
           channel,
           recipientContact,
+          recipientTimezone,
           scheduledDate: combinedDateTime.toISOString(),
           repeat,
           category,
@@ -230,18 +241,49 @@ function EditWishForm() {
             </div>
           </div>
 
-          {/* Contact Input */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              Recipient Contact Information *
-            </label>
-            <input
-              type="text"
-              required
-              value={recipientContact}
-              onChange={(e) => setRecipientContact(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-            />
+          {/* Contact Input & Receiver Country */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Recipient Contact Information *
+              </label>
+              <input
+                type="text"
+                required
+                value={recipientContact}
+                onChange={(e) => setRecipientContact(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Receiver&apos;s Country / Timezone *
+              </label>
+              <div className="relative">
+                <Globe className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                <select
+                  value={recipientTimezone}
+                  onChange={(e) => setRecipientTimezone(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all bg-white"
+                >
+                  <option value="Asia/Dhaka">🇧🇩 Bangladesh (GMT+6)</option>
+                  <option value="Asia/Kolkata">🇮🇳 India (GMT+5:30)</option>
+                  <option value="Asia/Dubai">🇦🇪 UAE / Dubai (GMT+4)</option>
+                  <option value="Asia/Riyadh">🇸🇦 Saudi Arabia (GMT+3)</option>
+                  <option value="Europe/London">🇬🇧 United Kingdom (GMT+0 / BST)</option>
+                  <option value="Europe/Berlin">🇩🇪 Europe (Germany, France - GMT+1)</option>
+                  <option value="America/New_York">🇺🇸 USA East (New York, Florida - EST)</option>
+                  <option value="America/Chicago">🇺🇸 USA Central (Texas, Chicago - CST)</option>
+                  <option value="America/Los_Angeles">🇺🇸 USA West (California, Seattle - PST)</option>
+                  <option value="America/Toronto">🇨🇦 Canada (Toronto, Montreal)</option>
+                  <option value="Australia/Sydney">🇦🇺 Australia (Sydney, Melbourne)</option>
+                  <option value="Asia/Singapore">🇸🇬 Singapore / Malaysia (GMT+8)</option>
+                  <option value="Asia/Tokyo">🇯🇵 Japan (GMT+9)</option>
+                  <option value="UTC">🌐 Universal UTC</option>
+                </select>
+              </div>
+            </div>
           </div>
 
           {/* Date & Time Picker */}

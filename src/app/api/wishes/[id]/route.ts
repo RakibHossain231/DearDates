@@ -56,6 +56,7 @@ export async function PUT(
       recipientName,
       channel,
       recipientContact,
+      recipientTimezone,
       scheduledDate,
       repeat,
       message,
@@ -67,6 +68,7 @@ export async function PUT(
       recipientName?: string;
       channel?: string;
       recipientContact?: string;
+      recipientTimezone?: string;
       scheduledDate?: Date;
       repeat?: string;
       message?: string;
@@ -77,6 +79,7 @@ export async function PUT(
     if (recipientName) updateData.recipientName = recipientName.trim();
     if (channel) updateData.channel = channel.toUpperCase();
     if (recipientContact) updateData.recipientContact = recipientContact.trim();
+    if (recipientTimezone) updateData.recipientTimezone = recipientTimezone;
     if (scheduledDate) updateData.scheduledDate = new Date(scheduledDate);
     if (repeat) updateData.repeat = repeat;
     if (message !== undefined) updateData.message = message.trim();

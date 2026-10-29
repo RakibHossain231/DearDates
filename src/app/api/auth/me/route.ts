@@ -24,6 +24,9 @@ export async function PUT(req: NextRequest) {
       timezone,
       deliveryNotification,
       avatar,
+      senderName,
+      smtpEmail,
+      smtpPassword,
       currentPassword,
       newPassword,
     } = await req.json();
@@ -34,6 +37,9 @@ export async function PUT(req: NextRequest) {
       timezone?: string;
       deliveryNotification?: boolean;
       avatar?: string;
+      senderName?: string;
+      smtpEmail?: string;
+      smtpPassword?: string;
       password?: string;
     } = {};
 
@@ -42,6 +48,9 @@ export async function PUT(req: NextRequest) {
     if (timezone) updateData.timezone = timezone;
     if (deliveryNotification !== undefined) updateData.deliveryNotification = deliveryNotification;
     if (avatar !== undefined) updateData.avatar = avatar;
+    if (senderName !== undefined) updateData.senderName = senderName.trim();
+    if (smtpEmail !== undefined) updateData.smtpEmail = smtpEmail.trim();
+    if (smtpPassword !== undefined) updateData.smtpPassword = smtpPassword.trim();
 
     // Handle password change if requested
     if (newPassword) {
@@ -79,6 +88,8 @@ export async function PUT(req: NextRequest) {
         deliveryNotification: true,
         emailVerified: true,
         phoneVerified: true,
+        senderName: true,
+        smtpEmail: true,
       },
     });
 

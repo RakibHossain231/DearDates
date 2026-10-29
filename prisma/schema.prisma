@@ -22,6 +22,9 @@ model User {
   deliveryNotification Boolean            @default(true)
   emailVerified        Boolean            @default(false)
   phoneVerified        Boolean            @default(false)
+  senderName           String?
+  smtpEmail            String?
+  smtpPassword         String?
   createdAt            DateTime           @default(now())
   updatedAt            DateTime           @updatedAt
 
@@ -48,6 +51,7 @@ model Wish {
   recipientName    String
   channel          String        // WHATSAPP, SMS, EMAIL, TELEGRAM
   recipientContact String        // Phone number, email, or chat id
+  recipientTimezone String       @default("Asia/Dhaka") // Receiver's country/timezone
   scheduledDate    DateTime      // When to send (UTC timestamp)
   repeat           String        @default("NONE") // NONE, YEARLY, MONTHLY
   message          String        // User can update/edit anytime!
