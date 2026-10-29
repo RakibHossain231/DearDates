@@ -48,9 +48,9 @@ export async function PUT(req: NextRequest) {
     if (timezone) updateData.timezone = timezone;
     if (deliveryNotification !== undefined) updateData.deliveryNotification = deliveryNotification;
     if (avatar !== undefined) updateData.avatar = avatar;
-    if (senderName !== undefined) updateData.senderName = senderName.trim();
-    if (smtpEmail !== undefined) updateData.smtpEmail = smtpEmail.trim();
-    if (smtpPassword !== undefined) updateData.smtpPassword = smtpPassword.trim();
+    if (senderName !== undefined) updateData.senderName = senderName ? senderName.trim() : null;
+    if (smtpEmail !== undefined) updateData.smtpEmail = smtpEmail && smtpEmail.trim() !== "" ? smtpEmail.trim() : null;
+    if (smtpPassword !== undefined) updateData.smtpPassword = smtpPassword && smtpPassword.trim() !== "" ? smtpPassword.trim() : null;
 
     // Handle password change if requested
     if (newPassword) {

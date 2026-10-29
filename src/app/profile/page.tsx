@@ -42,6 +42,7 @@ export default function ProfilePage() {
   const [deliveryNotification, setDeliveryNotification] = useState(true);
 
   // Personal sender states
+  const [useCustomGmail, setUseCustomGmail] = useState(false);
   const [senderName, setSenderName] = useState("");
   const [smtpEmail, setSmtpEmail] = useState("");
   const [smtpPassword, setSmtpPassword] = useState("");
@@ -71,7 +72,14 @@ export default function ProfilePage() {
           setTimezone(data.user.timezone || "Asia/Dhaka");
           setDeliveryNotification(data.user.deliveryNotification ?? true);
           setSenderName(data.user.senderName || data.user.name || "");
-          setSmtpEmail(data.user.smtpEmail || data.user.email || "");
+          if (data.user.smtpEmail) {
+            setUseCustomGmail(true);
+            setSmtpEmail(data.user.smtpEmail);
+          } else {
+            setUseCustomGmail(false);
+            setSmtpEmail("");
+          }
+          setSmtpPassword("");
         }
       })
       .catch(() => {
@@ -96,8 +104,8 @@ export default function ProfilePage() {
           timezone,
           deliveryNotification,
           senderName,
-          smtpEmail,
-          ...(smtpPassword ? { smtpPassword } : {}),
+          smtpEmail: useCustomGmail && smtpEmail ? smtpEmail.trim() : null,
+          smtpPassword: useCustomGmail && smtpPassword ? smtpPassword.trim() : null,
         }),
       });
 
@@ -312,58 +320,89 @@ export default function ProfilePage() {
 
               {/* Personal Sender Configuration */}
               <div className="pt-4 border-t border-slate-100">
-                <div className="mb-3">
-                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider block">
-                    Personal Sender Identity (Send from your own Gmail)
-                  </span>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    When configured, email greetings will be sent directly from your own personal Gmail account!
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                <div className="flex items-center justify-between mb-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Sender Display Name
+                    <label className="flex items-center space-x-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={useCustomGmail}
+                        onChange={(e) => {
+                          setUseCustomGmail(e.target.checked);
+                          if (!e.target.checked) {
+                            setSmtpEmail("");
+                            setSmtpPassword("");
+                          }
+                        }}
+                        className="w-4 h-4 text-indigo-600 rounded-md border-slate-300 focus:ring-indigo-500"
+                      />
+                      <span className="text-xs font-bold text-slate-800">
+                        Send from personal Gmail (Optional)
+                      </span>
                     </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Rakib Hossain"
-                      value={senderName}
-                      onChange={(e) => setSenderName(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      Your Personal Gmail
-                    </label>
-                    <input
-                      type="email"
-                      placeholder="yourname@gmail.com"
-                      value={smtpEmail}
-                      onChange={(e) => setSmtpEmail(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                    />
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      By default, all greetings are delivered automatically with zero setup required.
+                    </p>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Google App Password (16 characters)
-                  </label>
-                  <input
-                    type="password"
-                    placeholder="xxxx xxxx xxxx xxxx (Leave blank to keep current)"
-                    value={smtpPassword}
-                    onChange={(e) => setSmtpPassword(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600"
-                  />
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    💡 Get your free 16-char password from: <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" className="text-indigo-600 underline">Google Account &rarr; Security &rarr; App Passwords</a>
-                  </p>
-                </div>
+                {!useCustomGmail ? (
+                  <div className="p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-2xl text-xs text-indigo-800 flex items-center justify-between">
+                    <div>
+                      <span className="font-semibold block">✨ Automatic Cloud Delivery Active</span>
+                      <span className="text-indigo-600 text-[11px]">
+                        Wishes are delivered instantly using the server. No passwords or setup needed!
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 animate-in fade-in">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Sender Display Name
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Rakib Hossain"
+                          value={senderName}
+                          onChange={(e) => setSenderName(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Your Personal Gmail
+                        </label>
+                        <input
+                          type="email"
+                          autoComplete="off"
+                          placeholder="yourname@gmail.com"
+                          value={smtpEmail}
+                          onChange={(e) => setSmtpEmail(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-white"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1">
+                        Google App Password (16 characters)
+                      </label>
+                      <input
+                        type="password"
+                        autoComplete="new-password"
+                        placeholder="xxxx xxxx xxxx xxxx"
+                        value={smtpPassword}
+                        onChange={(e) => setSmtpPassword(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-white"
+                      />
+                      <p className="text-[11px] text-slate-400 mt-1">
+                        💡 Get from: <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" className="text-indigo-600 underline">Google Account &rarr; Security &rarr; App Passwords</a>
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Delivery notification preference */}

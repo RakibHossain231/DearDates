@@ -140,7 +140,7 @@ async function sendEmailWish({
   `;
 
   // Option A: Use User's own Gmail SMTP if configured!
-  if (smtpEmail && smtpPassword) {
+  if (smtpEmail && smtpPassword && smtpEmail.trim() !== "" && smtpPassword.trim() !== "") {
     try {
       const transporter = nodemailer.createTransport({
         service: "gmail",
@@ -164,12 +164,8 @@ async function sendEmailWish({
       };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      return {
-        success: false,
-        channel: "EMAIL",
-        response: "Gmail SMTP failed",
-        error: `Could not send from ${smtpEmail}: ${msg}. (Make sure 16-char Google App Password is used, not regular Gmail password).`,
-      };
+      console.warn(`Gmail SMTP failed for ${smtpEmail}: ${msg}. Falling back to central email service...`);
+      // If Gmail fails (e.g. wrong password or browser auto-fill issue), fall through to Resend so the wish is NOT lost!
     }
   }
 
