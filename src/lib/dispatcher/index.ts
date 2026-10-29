@@ -172,16 +172,26 @@ async function sendEmailWish({
   // Option B: Use Resend API if configured (Zero setup required for end users!)
   if (resend) {
     try {
-      const data = await resend.emails.send({
+      const { data, error } = await resend.emails.send({
         from: `${senderName.replace(/[<>"]/g, "")} <onboarding@resend.dev>`,
         to: recipientContact.trim(),
         subject,
         html: htmlContent,
       });
+
+      if (error) {
+        return {
+          success: false,
+          channel: "EMAIL",
+          response: "Resend rejected message",
+          error: error.message || JSON.stringify(error),
+        };
+      }
+
       return {
         success: true,
         channel: "EMAIL",
-        response: `Sent via Resend (ID: ${data.data?.id || "OK"})`,
+        response: `Sent via Resend (ID: ${data?.id || "OK"})`,
       };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
