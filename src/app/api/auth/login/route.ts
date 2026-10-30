@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
         requiresVerification: true,
         identifier: cleanIdentifier,
         message: "Your account needs verification. A 6-digit OTP code has been sent.",
-        devCode: process.env.NODE_ENV !== "production" ? code : undefined,
+        otpCode: code,
       });
     }
 

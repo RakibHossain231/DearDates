@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       message: `A 6-digit verification code has been dispatched to your ${isEmail ? "email" : "phone/WhatsApp"}.`,
       identifier: cleanIdentifier,
       signupMethod,
-      devCode: process.env.NODE_ENV !== "production" ? code : undefined,
+      otpCode: code,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       message: `A fresh 6-digit verification code has been sent to ${cleanIdentifier}.`,
-      devCode: process.env.NODE_ENV !== "production" ? code : undefined,
+      otpCode: code,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

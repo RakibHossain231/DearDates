@@ -230,7 +230,38 @@ async function sendEmailWish({
     }
   }
 
-  // Option B: Use DearDates Cloud Delivery via Resend (Default & Zero Setup)
+  // Option B: Use System SMTP if configured (100% Free via Gmail App Password)
+  const sysEmail = process.env.SYSTEM_SMTP_EMAIL || process.env.SMTP_EMAIL;
+  const sysPass = process.env.SYSTEM_SMTP_PASSWORD || process.env.SMTP_PASSWORD;
+  if (sysEmail && sysPass && sysEmail.trim() !== "" && sysPass.trim() !== "") {
+    try {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: sysEmail.trim(),
+          pass: sysPass.trim(),
+        },
+      });
+
+      const info = await transporter.sendMail({
+        from: `"${senderName}" <${sysEmail.trim()}>`,
+        to: recipientContact.trim(),
+        replyTo: senderEmail || sysEmail.trim(),
+        subject,
+        html: htmlContent,
+      });
+
+      return {
+        success: true,
+        channel: "EMAIL",
+        response: `Sent via DearDates Cloud SMTP (${sysEmail}) - MsgID: ${info.messageId}`,
+      };
+    } catch (err: unknown) {
+      console.warn("System SMTP failed, attempting Resend fallback:", err);
+    }
+  }
+
+  // Option C: Use DearDates Cloud Delivery via Resend (Default & Zero Setup)
   if (resend) {
     try {
       const cleanSender = senderName.replace(/[<>"]/g, "").trim() || "DearDates";
@@ -501,20 +532,24 @@ export async function sendOtpCode({
       </html>
     `;
 
-    // Try custom SMTP if available
-    if (smtpEmail && smtpPassword) {
+    // Try custom or system SMTP
+    const effectiveSmtpEmail = smtpEmail || process.env.SYSTEM_SMTP_EMAIL || process.env.SMTP_EMAIL;
+    const effectiveSmtpPassword = smtpPassword || process.env.SYSTEM_SMTP_PASSWORD || process.env.SMTP_PASSWORD;
+
+    if (effectiveSmtpEmail && effectiveSmtpPassword) {
       try {
         const transporter = nodemailer.createTransport({
           service: "gmail",
-          auth: { user: smtpEmail, pass: smtpPassword },
+          auth: { user: effectiveSmtpEmail.trim(), pass: effectiveSmtpPassword.trim() },
         });
         await transporter.sendMail({
-          from: `"DearDates Verification" <${smtpEmail}>`,
+          from: `"DearDates Verification" <${effectiveSmtpEmail.trim()}>`,
           to: target,
           subject: `Your DearDates Verification Code: ${code}`,
           html: htmlEmail,
           text: `Hello ${userName}! Your DearDates verification code is: ${code}. Valid for 10 minutes.`,
         });
+        console.log(`[OTP SENT VIA SMTP] to ${target}`);
         return true;
       } catch (e) {
         console.error("Failed to send OTP via SMTP:", e);
@@ -524,14 +559,19 @@ export async function sendOtpCode({
     // Try Resend Cloud
     if (resend) {
       try {
-        await resend.emails.send({
+        const { data, error } = await resend.emails.send({
           from: EMAIL_FROM,
           to: target,
           subject: `Your DearDates Verification Code: ${code}`,
           html: htmlEmail,
           text: `Hello ${userName}! Your DearDates verification code is: ${code}. Valid for 10 minutes.`,
         });
-        return true;
+        if (error) {
+          console.error("Resend OTP error:", error);
+        } else {
+          console.log(`[OTP SENT VIA RESEND] ID: ${data?.id}`);
+          return true;
+        }
       } catch (e) {
         console.error("Resend OTP error:", e);
       }
