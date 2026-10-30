@@ -227,7 +227,7 @@ async function sendEmailWish({
         service: "gmail",
         auth: {
           user: smtpEmail.trim(),
-          pass: smtpPassword.trim(),
+          pass: smtpPassword.trim().replace(/\s+/g, ""),
         },
       });
 
@@ -252,15 +252,46 @@ async function sendEmailWish({
   }
 
   // Option B: Use System SMTP if configured (100% Free via Gmail App Password)
-  const sysEmail = process.env.SYSTEM_SMTP_EMAIL || process.env.SMTP_EMAIL;
-  const sysPass = process.env.SYSTEM_SMTP_PASSWORD || process.env.SMTP_PASSWORD;
+  let sysEmail =
+    process.env.SYSTEM_SMTP_EMAIL ||
+    process.env.SMTP_EMAIL ||
+    process.env.SMTP_USER ||
+    process.env.GMAIL_USER ||
+    process.env.EMAIL_USER;
+
+  let sysPass =
+    process.env.SYSTEM_SMTP_PASSWORD ||
+    process.env.SMTP_PASSWORD ||
+    process.env.SMTP_PASS ||
+    process.env.GMAIL_APP_PASSWORD ||
+    process.env.GMAIL_PASS ||
+    process.env.EMAIL_PASS ||
+    process.env.EMAIL_PASSWORD;
+
+  // Fallback to database if not in process.env
+  if (!sysEmail || !sysPass) {
+    try {
+      const { prisma } = await import("@/lib/prisma");
+      const userWithSmtp = await prisma.user.findFirst({
+        where: { smtpEmail: { not: null }, smtpPassword: { not: null } },
+        select: { smtpEmail: true, smtpPassword: true },
+      });
+      if (userWithSmtp?.smtpEmail && userWithSmtp?.smtpPassword) {
+        sysEmail = userWithSmtp.smtpEmail;
+        sysPass = userWithSmtp.smtpPassword;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   if (sysEmail && sysPass && sysEmail.trim() !== "" && sysPass.trim() !== "") {
     try {
       const transporter = nodemailer.createTransport({
         service: "gmail",
         auth: {
           user: sysEmail.trim(),
-          pass: sysPass.trim(),
+          pass: sysPass.trim().replace(/\s+/g, ""),
         },
       });
 
