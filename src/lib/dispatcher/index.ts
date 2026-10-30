@@ -363,8 +363,112 @@ async function sendTelegramWish({
   };
 }
 
+function formatWhatsAppNumber(phone: string): string {
+  let cleaned = phone.replace(/\D/g, "");
+  if (cleaned.startsWith("01") && cleaned.length === 11) {
+    cleaned = "88" + cleaned;
+  }
+  return cleaned;
+}
+
+export async function dispatchWhatsAppMessage(
+  phone: string,
+  messageText: string
+): Promise<{ success: boolean; response: string; error?: string }> {
+  const formattedPhone = formatWhatsAppNumber(phone);
+
+  // 1. Check Green-API (Most popular free WhatsApp gateway: green-api.com)
+  const greenInstance = process.env.GREEN_API_INSTANCE_ID || process.env.WHATSAPP_INSTANCE_ID;
+  const greenToken = process.env.GREEN_API_TOKEN || process.env.WHATSAPP_API_TOKEN;
+  if (greenInstance && greenToken) {
+    try {
+      const res = await fetch(
+        `https://api.green-api.com/waInstance${greenInstance}/sendMessage/${greenToken}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chatId: `${formattedPhone}@c.us`,
+            message: messageText,
+          }),
+        }
+      );
+      const data = await res.json();
+      if (res.ok && data.idMessage) {
+        return { success: true, response: `Sent via Green-API (ID: ${data.idMessage})` };
+      }
+      return { success: false, response: "Green-API error", error: JSON.stringify(data) };
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { success: false, response: "Green-API request failed", error: msg };
+    }
+  }
+
+  // 2. Check Meta WhatsApp Cloud API (Official Facebook Meta)
+  const metaToken = process.env.WHATSAPP_ACCESS_TOKEN || process.env.META_WHATSAPP_TOKEN;
+  const metaPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID || process.env.META_PHONE_ID;
+  if (metaToken && metaPhoneId) {
+    try {
+      const res = await fetch(`https://graph.facebook.com/v19.0/${metaPhoneId}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${metaToken}`,
+        },
+        body: JSON.stringify({
+          messaging_product: "whatsapp",
+          to: formattedPhone,
+          type: "text",
+          text: { body: messageText },
+        }),
+      });
+      const data = await res.json();
+      if (res.ok && data.messages) {
+        return { success: true, response: `Sent via Meta WhatsApp Cloud (MsgID: ${data.messages[0]?.id})` };
+      }
+      return { success: false, response: "Meta WhatsApp error", error: data.error?.message || JSON.stringify(data) };
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { success: false, response: "Meta API request failed", error: msg };
+    }
+  }
+
+  // 3. Check Custom Gateway (e.g. TextBee or custom gateway)
+  const gatewayUrl = process.env.WHATSAPP_GATEWAY_URL || process.env.SMS_GATEWAY_URL;
+  const apiKey = process.env.WHATSAPP_GATEWAY_API_KEY || process.env.SMS_GATEWAY_API_KEY;
+  if (gatewayUrl && gatewayUrl.trim() !== "") {
+    try {
+      const res = await fetch(`${gatewayUrl}/send-whatsapp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+        },
+        body: JSON.stringify({
+          phone: formattedPhone,
+          message: messageText,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        return { success: true, response: "Sent via WhatsApp Gateway" };
+      }
+      return { success: false, response: "Gateway error", error: JSON.stringify(data) };
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { success: false, response: "Gateway connection failed", error: msg };
+    }
+  }
+
+  return {
+    success: false,
+    response: "WhatsApp service not connected",
+    error: "WhatsApp service is not connected yet. Please add your Green-API or Meta WhatsApp credentials in Vercel to dispatch real WhatsApp messages.",
+  };
+}
+
 /**
- * 3. WhatsApp Dispatcher
+ * 3. WhatsApp Wish Dispatcher
  */
 async function sendWhatsAppWish({
   recipientContact,
@@ -381,41 +485,15 @@ async function sendWhatsAppWish({
   senderEmail?: string | null;
   senderPhone?: string | null;
 }): Promise<DispatchResult> {
-  const gatewayUrl = process.env.SMS_GATEWAY_URL;
-  const apiKey = process.env.SMS_GATEWAY_API_KEY;
-
   const footer = buildSenderFooter(senderName, senderEmail, senderPhone);
   const formattedMsg = `🎂 *Special Wish for ${recipientName}!*\n\n${message}\n\n${footer}`;
 
-  if (gatewayUrl) {
-    try {
-      const res = await fetch(`${gatewayUrl}/send-whatsapp`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-        },
-        body: JSON.stringify({
-          phone: recipientContact.trim(),
-          message: formattedMsg,
-        }),
-      });
-      const data = await res.json();
-      return {
-        success: res.ok,
-        channel: "WHATSAPP",
-        response: JSON.stringify(data),
-      };
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return { success: false, channel: "WHATSAPP", response: "Gateway error", error: msg };
-    }
-  }
-
+  const result = await dispatchWhatsAppMessage(recipientContact, formattedMsg);
   return {
-    success: true,
+    success: result.success,
     channel: "WHATSAPP",
-    response: `Simulated WhatsApp to ${recipientContact} from ${senderName}`,
+    response: result.response,
+    error: result.error,
   };
 }
 
@@ -593,10 +671,18 @@ export async function sendOtpCode({
     };
   }
 
-  // Phone / WhatsApp / SMS dispatch
+  // WhatsApp dispatch (Channel WHATSAPP or phone number)
+  const otpMessage = `🎂 *DearDates Account Verification*\n\nHello ${userName}!\nYour 6-digit WhatsApp verification code is: *${code}*\n\nValid for 10 minutes. Please enter this code in DearDates to activate your account.`;
+
+  const waResult = await dispatchWhatsAppMessage(target, otpMessage);
+  if (waResult.success) {
+    return { success: true, channel: "WHATSAPP" };
+  }
+
+  // Fallback to generic SMS Gateway if configured
   const gatewayUrl = process.env.SMS_GATEWAY_URL;
   const apiKey = process.env.SMS_GATEWAY_API_KEY;
-  const otpText = `Your DearDates verification code is ${code}. Valid for 10 minutes.`;
+  const smsText = `Your DearDates verification code is ${code}. Valid for 10 minutes.`;
 
   if (gatewayUrl && gatewayUrl.trim() !== "") {
     try {
@@ -606,7 +692,7 @@ export async function sendOtpCode({
           "Content-Type": "application/json",
           ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
         },
-        body: JSON.stringify({ phone: target, message: otpText }),
+        body: JSON.stringify({ phone: target, message: smsText }),
       });
       if (res.ok) {
         return { success: true, channel: "SMS" };
@@ -619,7 +705,7 @@ export async function sendOtpCode({
 
   return {
     success: false,
-    channel: "SMS",
-    error: "Mobile SMS gateway is not connected yet. Please sign up using your Email address to receive your OTP code.",
+    channel: "WHATSAPP",
+    error: waResult.error || "WhatsApp service is not connected yet. Please connect Green-API (green-api.com) or Meta WhatsApp in Vercel to receive your OTP code on WhatsApp.",
   };
 }
