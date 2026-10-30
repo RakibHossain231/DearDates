@@ -303,7 +303,7 @@ function EditWishForm() {
               />
               {channel === "TELEGRAM" ? (
                 <p className="text-[11px] text-sky-600 mt-1">
-                  💡 Enter recipient&apos;s numeric Chat ID (e.g. 123456789). They can get it by sending any message to <strong>@userinfobot</strong> on Telegram!
+                  💡 Enter recipient&apos;s phone number or @username! Delivered directly to their personal Telegram chat without needing them to start any bot.
                 </p>
               ) : channel === "WHATSAPP" ? (
                 <p className="text-[11px] text-emerald-600 mt-1">

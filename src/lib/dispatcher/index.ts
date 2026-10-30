@@ -341,16 +341,7 @@ async function sendTelegramWish({
   senderEmail?: string | null;
   senderPhone?: string | null;
 }): Promise<DispatchResult> {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-
-  if (!token || token.trim() === "") {
-    return {
-      success: false,
-      channel: "TELEGRAM",
-      response: "Telegram Bot not configured",
-      error: "Telegram Bot Token is not configured. Please add TELEGRAM_BOT_TOKEN in Vercel to dispatch real Telegram messages.",
-    };
-  }
+  const contact = recipientContact.trim();
 
   let header = `🎉 <b>A Special Celebration Wish for You, ${escapeHtml(recipientName)}!</b> ✨`;
   const cat = (category || "").toUpperCase();
@@ -369,36 +360,155 @@ async function sendTelegramWish({
 
   const htmlText = `${header}\n\n"${escapeHtml(message)}"\n\n━━━━━━━━━━━━━━━━━━━━\n💝 <b>Sent with warm love by:</b>\n👤 <b>${escapeHtml(senderName)}</b>${senderContactSection}\n━━━━━━━━━━━━━━━━━━━━\n<i>Delivered automatically right on time via DearDates</i> ⏰✨`;
 
-  const chatId = recipientContact.trim();
+  // 1. Primary: Telegram MTProto User Session (Idea 1 — Direct to phone number or username)
+  const apiIdStr = process.env.TELEGRAM_API_ID;
+  const apiHash = process.env.TELEGRAM_API_HASH;
+  const sessionString = process.env.TELEGRAM_SESSION_STRING;
 
-  try {
-    const res = await fetch(`https://api.telegram.org/bot${token.trim()}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: htmlText,
-        parse_mode: "HTML",
-      }),
-    });
-    const data = await res.json();
-    if (data.ok) {
+  if (apiIdStr && apiHash && sessionString) {
+    try {
+      const apiId = parseInt(apiIdStr, 10);
+      const { TelegramClient, Api, sessions } = await import("telegram");
+      const { StringSession } = sessions;
+
+      const client = new TelegramClient(new StringSession(sessionString), apiId, apiHash, {
+        connectionRetries: 3,
+      });
+
+      await client.connect();
+
+      // Normalize phone number if contact looks like a phone number
+      let normalizedPhone = contact.replace(/[\s\-()]/g, "");
+      if (normalizedPhone.startsWith("01") && normalizedPhone.length === 11) {
+        normalizedPhone = "+88" + normalizedPhone;
+      } else if (
+        !normalizedPhone.startsWith("+") &&
+        !contact.startsWith("@") &&
+        normalizedPhone.length >= 10 &&
+        !isNaN(Number(normalizedPhone))
+      ) {
+        normalizedPhone = "+" + normalizedPhone;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let peer: any = null;
+
+      // Case A: Phone number lookup
+      if (normalizedPhone.startsWith("+")) {
+        // 1. Try contacts.ResolvePhone (cleanest, does not modify address book)
+        try {
+          const resolved = await client.invoke(
+            new Api.contacts.ResolvePhone({
+              phone: normalizedPhone.replace("+", ""),
+            })
+          );
+          if (resolved.users && resolved.users.length > 0) {
+            peer = resolved.users[0];
+          }
+        } catch {
+          // ResolvePhone might be restricted by user's privacy or Telegram server version
+        }
+
+        // 2. Fallback to contacts.ImportContacts
+        if (!peer) {
+          try {
+            const importRes = await client.invoke(
+              new Api.contacts.ImportContacts({
+                contacts: [
+                  new Api.InputPhoneContact({
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    clientId: Math.floor(Math.random() * 10000000) as any,
+                    phone: normalizedPhone,
+                    firstName: recipientName || "Dear Recipient",
+                    lastName: "",
+                  }),
+                ],
+              })
+            );
+            if (importRes.users && importRes.users.length > 0) {
+              peer = importRes.users[0];
+            }
+          } catch (importErr) {
+            console.error("Telegram ImportContacts error:", importErr);
+          }
+        }
+      } else {
+        // Case B: Username (@user or user) or numeric ID
+        try {
+          peer = await client.getEntity(contact);
+        } catch (entityErr) {
+          console.error("Telegram getEntity error:", entityErr);
+        }
+      }
+
+      if (!peer) {
+        await client.disconnect();
+        return {
+          success: false,
+          channel: "TELEGRAM",
+          response: "Telegram User Not Found",
+          error: `Could not find an active Telegram account registered with "${contact}". Please check that the phone number or @username has an active Telegram account.`,
+        };
+      }
+
+      await client.sendMessage(peer, {
+        message: htmlText,
+        parseMode: "html",
+      });
+
+      await client.disconnect();
+
       return {
         success: true,
         channel: "TELEGRAM",
-        response: `Sent via Telegram Bot (MsgID: ${data.result.message_id})`,
+        response: `Delivered directly to Telegram account via MTProto Client (${contact})`,
       };
+    } catch (mtprotoErr: unknown) {
+      const errMsg = mtprotoErr instanceof Error ? mtprotoErr.message : String(mtprotoErr);
+      console.error("Telegram MTProto error:", errMsg);
+      // Fall through to Bot API fallback below if MTProto fails
     }
-    return {
-      success: false,
-      channel: "TELEGRAM",
-      response: "Telegram Bot API error",
-      error: data.description || JSON.stringify(data),
-    };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return { success: false, channel: "TELEGRAM", response: "Fetch error", error: msg };
   }
+
+  // 2. Secondary Fallback: Telegram Bot API (requires numeric Chat ID)
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (token && token.trim() !== "") {
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token.trim()}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: contact,
+          text: htmlText,
+          parse_mode: "HTML",
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        return {
+          success: true,
+          channel: "TELEGRAM",
+          response: `Sent via Telegram Bot (MsgID: ${data.result.message_id})`,
+        };
+      }
+      return {
+        success: false,
+        channel: "TELEGRAM",
+        response: "Telegram Bot API error",
+        error: data.description || JSON.stringify(data),
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, channel: "TELEGRAM", response: "Fetch error", error: msg };
+    }
+  }
+
+  return {
+    success: false,
+    channel: "TELEGRAM",
+    response: "Telegram not configured",
+    error: "Telegram MTProto Session is not configured. Run 'npm run telegram:login' in terminal to link your Telegram account or set TELEGRAM_API_ID, TELEGRAM_API_HASH, and TELEGRAM_SESSION_STRING in .env",
+  };
 }
 
 function formatWhatsAppNumber(phone: string): string {
