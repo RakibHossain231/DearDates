@@ -219,39 +219,7 @@ async function sendEmailWish({
     </html>
   `;
 
-  // Option A: Use User's own Gmail SMTP if requested or configured
-  const wantsPersonalGmail = deliveryMode === "PERSONAL_GMAIL" || (smtpEmail && smtpPassword && deliveryMode !== "DEFAULT");
-  if (wantsPersonalGmail && smtpEmail && smtpPassword && smtpEmail.trim() !== "" && smtpPassword.trim() !== "") {
-    try {
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: smtpEmail.trim(),
-          pass: smtpPassword.trim().replace(/\s+/g, ""),
-        },
-      });
-
-      const info = await transporter.sendMail({
-        from: `"${senderName}" <${smtpEmail.trim()}>`,
-        to: recipientContact.trim(),
-        replyTo: senderEmail || smtpEmail.trim(),
-        subject,
-        html: htmlContent,
-      });
-
-      return {
-        success: true,
-        channel: "EMAIL",
-        response: `Sent directly from your personal Gmail (${smtpEmail}) - MsgID: ${info.messageId}`,
-      };
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`Gmail SMTP failed for ${smtpEmail}: ${msg}. Falling back to DearDates Cloud delivery...`);
-      // Fallback so the wish is not lost
-    }
-  }
-
-  // Option B: Use System SMTP if configured (100% Free via Gmail App Password)
+  // Enforce System Gateway Delivery: All wishes are dispatched via the central System Email gateway
   let sysEmail =
     process.env.SYSTEM_SMTP_EMAIL ||
     process.env.SMTP_EMAIL ||

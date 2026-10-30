@@ -244,50 +244,6 @@ function EditWishForm() {
             </div>
           </div>
 
-          {/* Email Delivery Mode Options */}
-          {channel === "EMAIL" && (
-            <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-3 animate-in fade-in">
-              <label className="block text-xs font-bold text-slate-800">
-                Email Dispatch Method
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setDeliveryMode("DEFAULT")}
-                  className={`p-3 rounded-xl border text-left transition-all ${
-                    deliveryMode === "DEFAULT"
-                      ? "border-indigo-600 bg-white ring-2 ring-indigo-500/20 shadow-xs"
-                      : "border-slate-200 bg-white/60 hover:bg-white"
-                  }`}
-                >
-                  <div className="flex items-center space-x-1.5 font-bold text-xs text-indigo-700">
-                    <span>⚡ DearDates Cloud Delivery (Default)</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                    Delivered automatically. Your name and contact details are clearly shown in the email so the recipient recognizes you.
-                  </p>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setDeliveryMode("PERSONAL_GMAIL")}
-                  className={`p-3 rounded-xl border text-left transition-all ${
-                    deliveryMode === "PERSONAL_GMAIL"
-                      ? "border-indigo-600 bg-white ring-2 ring-indigo-500/20 shadow-xs"
-                      : "border-slate-200 bg-white/60 hover:bg-white"
-                  }`}
-                >
-                  <div className="flex items-center space-x-1.5 font-bold text-xs text-slate-800">
-                    <span>📬 Personal Gmail Delivery</span>
-                  </div>
-                  <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                    Delivers directly from your personal Gmail address using the Google App Password configured in your Profile.
-                  </p>
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Contact Input & Receiver Country */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
