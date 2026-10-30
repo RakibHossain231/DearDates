@@ -318,15 +318,24 @@ function EditWishForm() {
                   <option value="Asia/Kolkata">🇮🇳 India (GMT+5:30)</option>
                   <option value="Asia/Dubai">🇦🇪 UAE / Dubai (GMT+4)</option>
                   <option value="Asia/Riyadh">🇸🇦 Saudi Arabia (GMT+3)</option>
+                  <option value="Asia/Qatar">🇶🇦 Qatar (GMT+3)</option>
+                  <option value="Asia/Kuwait">🇰🇼 Kuwait (GMT+3)</option>
+                  <option value="Asia/Muscat">🇴🇲 Oman (GMT+4)</option>
+                  <option value="Asia/Kuala_Lumpur">🇲🇾 Malaysia (GMT+8)</option>
+                  <option value="Asia/Singapore">🇸🇬 Singapore (GMT+8)</option>
                   <option value="Europe/London">🇬🇧 United Kingdom (GMT+0 / BST)</option>
-                  <option value="Europe/Berlin">🇩🇪 Europe (Germany, France - GMT+1)</option>
+                  <option value="Europe/Berlin">🇩🇪 Germany / Central Europe (GMT+1)</option>
+                  <option value="Europe/Rome">🇮🇹 Italy (GMT+1)</option>
+                  <option value="Europe/Paris">🇫🇷 France (GMT+1)</option>
                   <option value="America/New_York">🇺🇸 USA East (New York, Florida - EST)</option>
                   <option value="America/Chicago">🇺🇸 USA Central (Texas, Chicago - CST)</option>
                   <option value="America/Los_Angeles">🇺🇸 USA West (California, Seattle - PST)</option>
                   <option value="America/Toronto">🇨🇦 Canada (Toronto, Montreal)</option>
+                  <option value="America/Vancouver">🇨🇦 Canada West (Vancouver)</option>
                   <option value="Australia/Sydney">🇦🇺 Australia (Sydney, Melbourne)</option>
-                  <option value="Asia/Singapore">🇸🇬 Singapore / Malaysia (GMT+8)</option>
                   <option value="Asia/Tokyo">🇯🇵 Japan (GMT+9)</option>
+                  <option value="Asia/Seoul">🇰🇷 South Korea (GMT+9)</option>
+                  <option value="Pacific/Auckland">🇳🇿 New Zealand (GMT+12/13)</option>
                   <option value="UTC">🌐 Universal UTC</option>
                 </select>
               </div>

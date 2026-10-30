@@ -75,6 +75,7 @@ export async function dispatchWish(options: SendMessageOptions): Promise<Dispatc
           recipientContact,
           recipientName,
           message,
+          category,
           senderName,
           senderEmail,
           senderPhone,
@@ -474,6 +475,7 @@ async function sendWhatsAppWish({
   recipientContact,
   recipientName,
   message,
+  category = "BIRTHDAY",
   senderName,
   senderEmail,
   senderPhone,
@@ -481,12 +483,27 @@ async function sendWhatsAppWish({
   recipientContact: string;
   recipientName: string;
   message: string;
+  category?: string;
   senderName: string;
   senderEmail?: string | null;
   senderPhone?: string | null;
 }): Promise<DispatchResult> {
-  const footer = buildSenderFooter(senderName, senderEmail, senderPhone);
-  const formattedMsg = `🎂 *Special Wish for ${recipientName}!*\n\n${message}\n\n${footer}`;
+  let header = `🎉 *A Special Celebration Wish for You, ${recipientName}!* ✨`;
+  const cat = (category || "").toUpperCase();
+  if (cat.includes("BIRTHDAY")) {
+    header = `🎂 *Happy Birthday, ${recipientName}!* 🎈✨`;
+  } else if (cat.includes("ANNIVERSARY")) {
+    header = `💍 *Happy Wedding Anniversary, ${recipientName}!* 🥂✨`;
+  } else if (cat.includes("NEW_YEAR")) {
+    header = `🎆 *Happy New Year, ${recipientName}!* 🌟✨`;
+  }
+
+  const senderContactList: string[] = [];
+  if (senderPhone) senderContactList.push(`📱 *WhatsApp / Phone:* ${senderPhone}`);
+  if (senderEmail) senderContactList.push(`📧 *Email:* ${senderEmail}`);
+  const senderContactSection = senderContactList.length > 0 ? `\n${senderContactList.join("\n")}` : "";
+
+  const formattedMsg = `${header}\n\n"${message}"\n\n━━━━━━━━━━━━━━━━━━━━\n💝 *Sent with warm love by:*\n👤 *${senderName}*${senderContactSection}\n━━━━━━━━━━━━━━━━━━━━\n_Delivered automatically right on time via DearDates_ ⏰✨`;
 
   const result = await dispatchWhatsAppMessage(recipientContact, formattedMsg);
   return {
