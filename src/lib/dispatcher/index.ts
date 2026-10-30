@@ -360,6 +360,17 @@ async function sendTelegramWish({
 
   const htmlText = `${header}\n\n"${escapeHtml(message)}"\n\n━━━━━━━━━━━━━━━━━━━━\n💝 <b>Sent with warm love by:</b>\n👤 <b>${escapeHtml(senderName)}</b>${senderContactSection}\n━━━━━━━━━━━━━━━━━━━━\n<i>Delivered automatically right on time via DearDates</i> ⏰✨`;
 
+  // Dynamically ensure latest .env values are loaded in case server hasn't restarted
+  if (!process.env.TELEGRAM_SESSION_STRING) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const dotenv = require("dotenv");
+      dotenv.config();
+    } catch {
+      // ignore
+    }
+  }
+
   // 1. Primary: Telegram MTProto User Session (Idea 1 — Direct to phone number or username)
   const apiIdStr = process.env.TELEGRAM_API_ID;
   const apiHash = process.env.TELEGRAM_API_HASH;
@@ -466,13 +477,19 @@ async function sendTelegramWish({
     } catch (mtprotoErr: unknown) {
       const errMsg = mtprotoErr instanceof Error ? mtprotoErr.message : String(mtprotoErr);
       console.error("Telegram MTProto error:", errMsg);
-      // Fall through to Bot API fallback below if MTProto fails
+      return {
+        success: false,
+        channel: "TELEGRAM",
+        response: "Telegram MTProto delivery error",
+        error: errMsg,
+      };
     }
   }
 
   // 2. Secondary Fallback: Telegram Bot API (requires numeric Chat ID)
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (token && token.trim() !== "") {
+  const isPhoneNumber = contact.startsWith("+") || (contact.startsWith("01") && contact.length >= 10);
+  if (token && token.trim() !== "" && !isPhoneNumber) {
     try {
       const res = await fetch(`https://api.telegram.org/bot${token.trim()}/sendMessage`, {
         method: "POST",
