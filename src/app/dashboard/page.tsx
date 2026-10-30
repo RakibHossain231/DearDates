@@ -376,26 +376,13 @@ export default function DashboardPage() {
 
                 {/* Card Action Footer */}
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <button
-                      type="button"
-                      disabled={testingId === wish.id}
-                      onClick={() => handleTestSend(wish.id, wish.recipientName)}
-                      className="text-xs font-semibold text-emerald-600 hover:text-emerald-800 flex items-center space-x-1 px-2.5 py-1.5 rounded-lg hover:bg-emerald-50 transition-colors border border-emerald-200/80 disabled:opacity-50"
-                      title="Trigger delivery immediately for testing"
-                    >
-                      <Send className={`w-3.5 h-3.5 ${testingId === wish.id ? "animate-spin" : ""}`} />
-                      <span>{testingId === wish.id ? "Sending..." : "Send Test Now"}</span>
-                    </button>
-
-                    <Link
-                      href={`/wishes/edit/${wish.id}`}
-                      className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1 px-2.5 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors"
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>Edit</span>
-                    </Link>
-                  </div>
+                  <Link
+                    href={`/wishes/edit/${wish.id}`}
+                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1.5 px-3 py-1.5 rounded-lg hover:bg-indigo-50 transition-colors border border-slate-200/80"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Edit Wish</span>
+                  </Link>
 
                   <button
                     onClick={() => handleDelete(wish.id, wish.recipientName)}
