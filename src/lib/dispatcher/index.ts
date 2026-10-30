@@ -475,6 +475,12 @@ async function sendSmsWish({
   };
 }
 
+export interface OtpResult {
+  success: boolean;
+  channel: string;
+  error?: string;
+}
+
 /**
  * OTP Sender for Registration & Verification
  */
@@ -492,7 +498,7 @@ export async function sendOtpCode({
   userName?: string;
   smtpEmail?: string | null;
   smtpPassword?: string | null;
-}): Promise<boolean> {
+}): Promise<OtpResult> {
   const isEmail = channel === "EMAIL" || target.includes("@");
 
   if (isEmail) {
@@ -518,7 +524,7 @@ export async function sendOtpCode({
             </div>
             <div class="content">
               <p style="font-size: 16px; color: #1e293b; margin: 0;">Hello <strong>${userName}</strong>,</p>
-              <p style="font-size: 14px; color: #64748b; margin-top: 8px;">Use the 6-digit code below to verify your account. It will expire in 10 minutes.</p>
+              <p style="font-size: 14px; color: #64748b; margin-top: 8px;">Use the 6-digit code below to verify your email address. It will expire in 10 minutes.</p>
               
               <div class="code-box">${code}</div>
 
@@ -532,11 +538,11 @@ export async function sendOtpCode({
       </html>
     `;
 
-    // Try custom or system SMTP
+    // 1. Try custom or system Gmail SMTP (Can send to ANY email address)
     const effectiveSmtpEmail = smtpEmail || process.env.SYSTEM_SMTP_EMAIL || process.env.SMTP_EMAIL;
     const effectiveSmtpPassword = smtpPassword || process.env.SYSTEM_SMTP_PASSWORD || process.env.SMTP_PASSWORD;
 
-    if (effectiveSmtpEmail && effectiveSmtpPassword) {
+    if (effectiveSmtpEmail && effectiveSmtpPassword && effectiveSmtpEmail.trim() !== "" && effectiveSmtpPassword.trim() !== "") {
       try {
         const transporter = nodemailer.createTransport({
           service: "gmail",
@@ -549,14 +555,15 @@ export async function sendOtpCode({
           html: htmlEmail,
           text: `Hello ${userName}! Your DearDates verification code is: ${code}. Valid for 10 minutes.`,
         });
-        console.log(`[OTP SENT VIA SMTP] to ${target}`);
-        return true;
-      } catch (e) {
-        console.error("Failed to send OTP via SMTP:", e);
+        console.log(`[OTP SENT VIA GMAIL SMTP] Successfully dispatched to ${target}`);
+        return { success: true, channel: "EMAIL" };
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("Failed to send OTP via SMTP:", msg);
       }
     }
 
-    // Try Resend Cloud
+    // 2. Try Resend Cloud
     if (resend) {
       try {
         const { data, error } = await resend.emails.send({
@@ -570,15 +577,20 @@ export async function sendOtpCode({
           console.error("Resend OTP error:", error);
         } else {
           console.log(`[OTP SENT VIA RESEND] ID: ${data?.id}`);
-          return true;
+          return { success: true, channel: "EMAIL" };
         }
-      } catch (e) {
-        console.error("Resend OTP error:", e);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error("Resend OTP error:", msg);
       }
     }
 
-    console.log(`[OTP EMAIL SIMULATION] Code for ${target}: ${code}`);
-    return true;
+    // Neither SMTP nor Resend could deliver
+    return {
+      success: false,
+      channel: "EMAIL",
+      error: "Live email delivery service is not configured. Please add SYSTEM_SMTP_EMAIL & SYSTEM_SMTP_PASSWORD (16-char Google App Password) in Vercel to send verification emails to real inboxes.",
+    };
   }
 
   // Phone / WhatsApp / SMS dispatch
@@ -586,9 +598,9 @@ export async function sendOtpCode({
   const apiKey = process.env.SMS_GATEWAY_API_KEY;
   const otpText = `Your DearDates verification code is ${code}. Valid for 10 minutes.`;
 
-  if (gatewayUrl) {
+  if (gatewayUrl && gatewayUrl.trim() !== "") {
     try {
-      await fetch(`${gatewayUrl}/send-sms`, {
+      const res = await fetch(`${gatewayUrl}/send-sms`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -596,12 +608,18 @@ export async function sendOtpCode({
         },
         body: JSON.stringify({ phone: target, message: otpText }),
       });
-      return true;
-    } catch (e) {
-      console.error("Failed to send OTP via SMS gateway:", e);
+      if (res.ok) {
+        return { success: true, channel: "SMS" };
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("Failed to send OTP via SMS gateway:", msg);
     }
   }
 
-  console.log(`[OTP ${channel}] Sent to ${target}: ${code}`);
-  return true;
+  return {
+    success: false,
+    channel: "SMS",
+    error: "Mobile SMS gateway is not connected yet. Please sign up using your Email address to receive your OTP code.",
+  };
 }

@@ -50,17 +50,23 @@ export async function POST(req: NextRequest) {
     });
 
     const isEmail = cleanIdentifier.includes("@");
-    await sendOtpCode({
+    const otpResult = await sendOtpCode({
       target: cleanIdentifier,
       channel: isEmail ? "EMAIL" : "WHATSAPP",
       code,
       userName: user.name,
     });
 
+    if (!otpResult.success) {
+      return NextResponse.json(
+        { error: otpResult.error || "Failed to resend verification code" },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      message: `A fresh 6-digit verification code has been sent to ${cleanIdentifier}.`,
-      otpCode: code,
+      message: `A fresh 6-digit verification code has been dispatched to ${cleanIdentifier}. Please check your ${isEmail ? "inbox (and spam folder)" : "messages"}.`,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

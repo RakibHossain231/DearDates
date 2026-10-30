@@ -28,7 +28,6 @@ export default function LoginPage() {
   // Verification step (for unverified accounts)
   const [needsVerification, setNeedsVerification] = useState(false);
   const [otpCode, setOtpCode] = useState("");
-  const [devCode, setDevCode] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
 
   // Step 1: Normal Login Submit
@@ -52,9 +51,6 @@ export default function LoginPage() {
       } else if (data.requiresVerification) {
         setNeedsVerification(true);
         setSuccessMsg(data.message || "Please enter the 6-digit OTP sent to your contact.");
-        if (data.otpCode) {
-          setDevCode(data.otpCode);
-        }
       } else {
         setError(data.error || "Failed to log in. Please check your credentials.");
       }
@@ -111,9 +107,6 @@ export default function LoginPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         setSuccessMsg(data.message || "A fresh verification code has been dispatched!");
-        if (data.otpCode) {
-          setDevCode(data.otpCode);
-        }
       } else {
         setError(data.error || "Failed to resend code");
       }
@@ -224,29 +217,15 @@ export default function LoginPage() {
         ) : (
           /* Step 2: OTP Entry Form */
           <form onSubmit={handleVerifyOtp} className="space-y-4">
-            {devCode && (
-              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 space-y-2.5 animate-in fade-in">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold flex items-center space-x-1.5 text-amber-900">
-                    <KeyRound className="w-4 h-4 text-amber-600" />
-                    <span>Instant Verification Code:</span>
-                  </span>
-                  <span className="text-base font-extrabold tracking-widest text-indigo-700 bg-white px-3 py-1 rounded-xl border border-amber-300 shadow-xs">
-                    {devCode}
-                  </span>
-                </div>
-                <p className="text-[11px] text-amber-700 leading-relaxed">
-                  Use this instant code to complete your verification and sign in right away!
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setOtpCode(devCode)}
-                  className="w-full py-2 px-3 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl font-semibold text-xs transition-colors flex items-center justify-center space-x-1 shadow-xs"
-                >
-                  <span>⚡ Auto-fill Code ({devCode})</span>
-                </button>
+            <div className="p-4 bg-indigo-50/70 border border-indigo-100 rounded-2xl text-xs text-indigo-900 space-y-1">
+              <div className="font-semibold flex items-center space-x-1.5 text-indigo-800">
+                <KeyRound className="w-4 h-4 text-indigo-600" />
+                <span>Verification code sent to {identifier}</span>
               </div>
-            )}
+              <p className="text-[11px] text-slate-500 leading-relaxed">
+                Please check your email inbox (and spam/junk folder) for the 6-digit verification code.
+              </p>
+            </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-2 text-center">

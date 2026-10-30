@@ -86,19 +86,25 @@ export async function POST(req: NextRequest) {
     });
 
     // Dispatch OTP code
-    await sendOtpCode({
+    const otpResult = await sendOtpCode({
       target: cleanIdentifier,
       channel: isEmail ? "EMAIL" : "WHATSAPP",
       code,
       userName: user.name,
     });
 
+    if (!otpResult.success) {
+      return NextResponse.json(
+        { error: otpResult.error || "Failed to send verification code. Please try again or check your contact information." },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
-      message: `A 6-digit verification code has been dispatched to your ${isEmail ? "email" : "phone/WhatsApp"}.`,
+      message: `A 6-digit verification code has been dispatched to your ${isEmail ? "email inbox" : "phone"}. Please check your ${isEmail ? "inbox (and spam folder)" : "messages"} to verify.`,
       identifier: cleanIdentifier,
       signupMethod,
-      otpCode: code,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

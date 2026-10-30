@@ -53,18 +53,25 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      await sendOtpCode({
+      const isEmail = Boolean(user.email);
+      const otpResult = await sendOtpCode({
         target: cleanIdentifier,
-        channel: user.email ? "EMAIL" : "WHATSAPP",
+        channel: isEmail ? "EMAIL" : "WHATSAPP",
         code,
         userName: user.name,
       });
 
+      if (!otpResult.success) {
+        return NextResponse.json(
+          { error: otpResult.error || "Failed to dispatch verification code to your email/phone." },
+          { status: 500 }
+        );
+      }
+
       return NextResponse.json({
         requiresVerification: true,
         identifier: cleanIdentifier,
-        message: "Your account needs verification. A 6-digit OTP code has been sent.",
-        otpCode: code,
+        message: `Your account needs verification. A 6-digit OTP code has been sent to your ${isEmail ? "email inbox" : "phone"}.`,
       });
     }
 
