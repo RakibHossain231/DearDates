@@ -28,6 +28,9 @@ export async function POST(
           telegramApiId: true,
           telegramApiHash: true,
           telegramSession: true,
+          bdSmsToken: true,
+          bdSmsSenderId: true,
+          bdSmsProvider: true,
         },
       },
     },
@@ -53,6 +56,9 @@ export async function POST(
       telegramApiId: wish.user.telegramApiId,
       telegramApiHash: wish.user.telegramApiHash,
       telegramSession: wish.user.telegramSession,
+      bdSmsToken: wish.user.bdSmsToken,
+      bdSmsSenderId: wish.user.bdSmsSenderId,
+      bdSmsProvider: wish.user.bdSmsProvider,
     });
 
     // Record delivery log

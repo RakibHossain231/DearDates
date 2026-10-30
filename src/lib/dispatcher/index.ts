@@ -20,6 +20,9 @@ export interface SendMessageOptions {
   telegramApiId?: string | null;
   telegramApiHash?: string | null;
   telegramSession?: string | null;
+  bdSmsToken?: string | null;
+  bdSmsSenderId?: string | null;
+  bdSmsProvider?: string | null;
 }
 
 export interface DispatchResult {
@@ -48,6 +51,9 @@ export async function dispatchWish(options: SendMessageOptions): Promise<Dispatc
     telegramApiId,
     telegramApiHash,
     telegramSession,
+    bdSmsToken,
+    bdSmsSenderId,
+    bdSmsProvider,
   } = options;
 
   try {
@@ -96,9 +102,13 @@ export async function dispatchWish(options: SendMessageOptions): Promise<Dispatc
           recipientContact,
           recipientName,
           message,
+          category,
           senderName,
           senderEmail,
           senderPhone,
+          bdSmsToken,
+          bdSmsSenderId,
+          bdSmsProvider,
         });
 
       default:
@@ -355,6 +365,9 @@ async function sendTelegramWish({
   telegramApiId?: string | null;
   telegramApiHash?: string | null;
   telegramSession?: string | null;
+  bdSmsToken?: string | null;
+  bdSmsSenderId?: string | null;
+  bdSmsProvider?: string | null;
 }): Promise<DispatchResult> {
   const contact = recipientContact.trim();
 
@@ -711,49 +724,175 @@ async function sendWhatsAppWish({
   };
 }
 
+function formatBdPhoneNumber(phone: string): string {
+  let cleaned = phone.replace(/\D/g, "");
+  if (cleaned.startsWith("8801") && cleaned.length === 13) {
+    return cleaned;
+  }
+  if (cleaned.startsWith("01") && cleaned.length === 11) {
+    return "88" + cleaned;
+  }
+  if (cleaned.startsWith("1") && cleaned.length === 10) {
+    return "880" + cleaned;
+  }
+  return cleaned;
+}
+
 /**
- * 4. SMS Dispatcher (Direct Mobile Number)
+ * 4. SMS Dispatcher (Method 1: Bangladeshi Bulk SMS Gateways — Greenweb, BulkSMSBD, MimSMS)
  */
 async function sendSmsWish({
   recipientContact,
   recipientName,
   message,
+  category = "Celebration",
   senderName,
   senderEmail,
   senderPhone,
+  bdSmsToken,
+  bdSmsSenderId,
+  bdSmsProvider,
 }: {
   recipientContact: string;
   recipientName: string;
   message: string;
+  category?: string;
   senderName: string;
   senderEmail?: string | null;
   senderPhone?: string | null;
+  bdSmsToken?: string | null;
+  bdSmsSenderId?: string | null;
+  bdSmsProvider?: string | null;
 }): Promise<DispatchResult> {
-  const gatewayUrl = process.env.SMS_GATEWAY_URL;
-  const apiKey = process.env.SMS_GATEWAY_API_KEY;
+  const contact = recipientContact.trim();
+  const formattedPhone = formatBdPhoneNumber(contact);
 
   const senderContactInfo = senderPhone || senderEmail || "";
-  const smsText = `DearDates for ${recipientName}: ${message} - From ${senderName}${senderContactInfo ? ` (${senderContactInfo})` : ""}`;
+  let occasionHeader = "Warm Wishes";
+  const cat = (category || "").toUpperCase();
+  if (cat.includes("BIRTHDAY")) occasionHeader = "Happy Birthday";
+  else if (cat.includes("ANNIVERSARY")) occasionHeader = "Happy Anniversary";
+  else if (cat.includes("NEW_YEAR")) occasionHeader = "Happy New Year";
 
+  const smsText = `🎉 ${occasionHeader}, ${recipientName}! ${message} - From ${senderName}${senderContactInfo ? ` (${senderContactInfo})` : ""}. Delivered on time via DearDates ✨`;
+
+  // 1. Resolve Credentials (Check params -> Check process.env -> Fallback to Supabase DB)
+  let token = bdSmsToken || process.env.GREENWEB_SMS_TOKEN || process.env.BD_SMS_TOKEN;
+  let senderId = bdSmsSenderId || process.env.BD_SMS_SENDER_ID || process.env.BULKSMSBD_SENDER_ID;
+  let provider = (bdSmsProvider || process.env.BD_SMS_PROVIDER || "GREENWEB").toUpperCase();
+
+  if (!token) {
+    try {
+      const { prisma } = await import("@/lib/prisma");
+      const userWithSms = await prisma.user.findFirst({
+        where: { bdSmsToken: { not: null } },
+        select: { bdSmsToken: true, bdSmsSenderId: true, bdSmsProvider: true },
+      });
+      if (userWithSms?.bdSmsToken) {
+        token = userWithSms.bdSmsToken;
+        senderId = userWithSms.bdSmsSenderId || senderId;
+        provider = (userWithSms.bdSmsProvider || provider).toUpperCase();
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // Provider A: Greenweb BD (Default for Method 1: api.greenweb.com.bd)
+  if (provider === "GREENWEB" && token) {
+    try {
+      const url = `https://api.greenweb.com.bd/api.php?token=${encodeURIComponent(token.trim())}&to=${encodeURIComponent(formattedPhone)}&message=${encodeURIComponent(smsText)}`;
+      const res = await fetch(url, { method: "GET" });
+      const rawText = await res.text();
+
+      if (
+        rawText.toLowerCase().includes("ok") ||
+        rawText.includes("MsgId") ||
+        rawText.toLowerCase().includes("success")
+      ) {
+        return {
+          success: true,
+          channel: "SMS",
+          response: `Delivered via Greenweb BD SMS (${rawText.trim()})`,
+        };
+      }
+      return {
+        success: false,
+        channel: "SMS",
+        response: "Greenweb BD SMS Error",
+        error: rawText.trim(),
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, channel: "SMS", response: "Greenweb request failed", error: msg };
+    }
+  }
+
+  // Provider B: BulkSMSBD (bulksmsbd.net)
+  const bulkSmsKey = token || process.env.BULKSMSBD_API_KEY;
+  if (provider === "BULKSMSBD" && bulkSmsKey) {
+    try {
+      const url = `http://bulksmsbd.net/api/smsapi?api_key=${encodeURIComponent(bulkSmsKey.trim())}&type=text&number=${encodeURIComponent(formattedPhone)}&senderid=${encodeURIComponent(senderId || "")}&message=${encodeURIComponent(smsText)}`;
+      const res = await fetch(url, { method: "GET" });
+      const data = await res.json();
+
+      if (data.response_code === 202 || (data.success_message && data.success_message.includes("Successfully"))) {
+        return {
+          success: true,
+          channel: "SMS",
+          response: `Delivered via BulkSMSBD (${data.success_message || "Success"})`,
+        };
+      }
+      return {
+        success: false,
+        channel: "SMS",
+        response: "BulkSMSBD error",
+        error: data.error_message || JSON.stringify(data),
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, channel: "SMS", response: "BulkSMSBD request failed", error: msg };
+    }
+  }
+
+  // Provider C: MimSMS (mimsms.com)
+  const mimApiKey = token || process.env.MIMSMS_API_KEY;
+  if (provider === "MIMSMS" && mimApiKey) {
+    try {
+      const url = `https://mimsms.com/smsapi?api_key=${encodeURIComponent(mimApiKey.trim())}&type=text&contacts=${encodeURIComponent(formattedPhone)}&senderid=${encodeURIComponent(senderId || "")}&msg=${encodeURIComponent(smsText)}`;
+      const res = await fetch(url, { method: "GET" });
+      const rawText = await res.text();
+
+      if (rawText.toLowerCase().includes("success") || rawText.toLowerCase().includes("submitted")) {
+        return {
+          success: true,
+          channel: "SMS",
+          response: `Delivered via MimSMS (${rawText.trim()})`,
+        };
+      }
+      return {
+        success: false,
+        channel: "SMS",
+        response: "MimSMS error",
+        error: rawText.trim(),
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, channel: "SMS", response: "MimSMS request failed", error: msg };
+    }
+  }
+
+  // Provider D: Generic Custom Gateway URL
+  const gatewayUrl = process.env.SMS_GATEWAY_URL;
   if (gatewayUrl) {
     try {
       const res = await fetch(`${gatewayUrl}/send-sms`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-        },
-        body: JSON.stringify({
-          phone: recipientContact.trim(),
-          message: smsText,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: formattedPhone, message: smsText }),
       });
       const data = await res.json();
-      return {
-        success: res.ok,
-        channel: "SMS",
-        response: JSON.stringify(data),
-      };
+      return { success: res.ok, channel: "SMS", response: JSON.stringify(data) };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       return { success: false, channel: "SMS", response: "SMS Gateway error", error: msg };
@@ -761,9 +900,10 @@ async function sendSmsWish({
   }
 
   return {
-    success: true,
+    success: false,
     channel: "SMS",
-    response: `Simulated SMS to ${recipientContact} from ${senderName}`,
+    response: "SMS Gateway not configured",
+    error: "Bangladeshi SMS Gateway Token is not configured. Please add GREENWEB_SMS_TOKEN or BD_SMS_TOKEN in .env / Vercel to dispatch real Direct Phone SMS.",
   };
 }
 

@@ -313,6 +313,10 @@ function EditWishForm() {
                 <p className="text-[11px] text-indigo-600 mt-1">
                   💡 Enter recipient&apos;s email address. Delivered directly to their inbox on time!
                 </p>
+              ) : channel === "SMS" ? (
+                <p className="text-[11px] text-blue-600 mt-1">
+                  💡 Enter recipient&apos;s mobile number (e.g. 017... or +88017...). Delivered directly to their phone SIM message inbox!
+                </p>
               ) : null}
             </div>
 

@@ -47,6 +47,9 @@ async function handleDispatch(req: NextRequest) {
             telegramApiId: true,
             telegramApiHash: true,
             telegramSession: true,
+            bdSmsToken: true,
+            bdSmsSenderId: true,
+            bdSmsProvider: true,
           },
         },
       },
@@ -70,6 +73,9 @@ async function handleDispatch(req: NextRequest) {
           telegramApiId: wish.user.telegramApiId,
           telegramApiHash: wish.user.telegramApiHash,
           telegramSession: wish.user.telegramSession,
+          bdSmsToken: wish.user.bdSmsToken,
+          bdSmsSenderId: wish.user.bdSmsSenderId,
+          bdSmsProvider: wish.user.bdSmsProvider,
         });
 
         // Record delivery log
