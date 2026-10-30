@@ -26,8 +26,18 @@ import { fromZonedTime } from "date-fns-tz";
 export default function NewWishPage() {
   const router = useRouter();
   const [recipientName, setRecipientName] = useState("");
-  const [channel, setChannel] = useState<"WHATSAPP" | "SMS" | "EMAIL" | "TELEGRAM">("WHATSAPP");
-  const [recipientContact, setRecipientContact] = useState("");
+  const [selectedChannels, setSelectedChannels] = useState<string[]>(["WHATSAPP"]);
+  const [contacts, setContacts] = useState<{
+    WHATSAPP: string;
+    SMS: string;
+    EMAIL: string;
+    TELEGRAM: string;
+  }>({
+    WHATSAPP: "",
+    SMS: "",
+    EMAIL: "",
+    TELEGRAM: "",
+  });
   const [recipientTimezone, setRecipientTimezone] = useState("Asia/Dhaka");
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("00:01"); // Midnight default!
@@ -39,28 +49,66 @@ export default function NewWishPage() {
   const [error, setError] = useState("");
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
-  const getContactPlaceholder = () => {
-    switch (channel) {
-      case "WHATSAPP":
-        return "Recipient's WhatsApp number (e.g. +8801712345678)";
-      case "SMS":
-        return "Recipient's Mobile number (e.g. 01712345678)";
-      case "EMAIL":
-        return "Recipient's Email address (e.g. friend@gmail.com)";
-      case "TELEGRAM":
-        return "Recipient's Telegram Phone Number (e.g. 01712345678 or +88017...) or @username";
-      default:
-        return "Contact address";
+  const toggleChannel = (ch: string) => {
+    if (selectedChannels.includes(ch)) {
+      if (selectedChannels.length === 1) return; // Keep at least one
+      setSelectedChannels(selectedChannels.filter((c) => c !== ch));
+    } else {
+      setSelectedChannels([...selectedChannels, ch]);
     }
   };
+
+  const selectAllChannels = () => {
+    if (selectedChannels.length === 4) {
+      setSelectedChannels(["WHATSAPP"]);
+    } else {
+      setSelectedChannels(["WHATSAPP", "SMS", "EMAIL", "TELEGRAM"]);
+    }
+  };
+
+  // Copy first non-empty phone number to all selected phone-based channels
+  const copyFirstPhoneToAll = () => {
+    const phone =
+      contacts.WHATSAPP.trim() ||
+      contacts.SMS.trim() ||
+      contacts.TELEGRAM.trim();
+
+    if (!phone) return;
+
+    setContacts((prev) => ({
+      ...prev,
+      WHATSAPP: selectedChannels.includes("WHATSAPP") ? phone : prev.WHATSAPP,
+      SMS: selectedChannels.includes("SMS") ? phone : prev.SMS,
+      TELEGRAM: selectedChannels.includes("TELEGRAM") ? phone : prev.TELEGRAM,
+    }));
+  };
+
+  const selectedPhoneChannels = selectedChannels.filter((c) => c !== "EMAIL");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
-    if (!recipientName || !recipientContact || !scheduledDate || !message) {
+    if (!recipientName || !scheduledDate || !message) {
       setError("Please complete all required fields");
       return;
+    }
+
+    // Verify each selected channel has its contact filled out
+    for (const ch of selectedChannels) {
+      const contactVal = contacts[ch as keyof typeof contacts];
+      if (!contactVal || !contactVal.trim()) {
+        const chName =
+          ch === "WHATSAPP"
+            ? "WhatsApp"
+            : ch === "SMS"
+            ? "Direct SMS"
+            : ch === "EMAIL"
+            ? "Email"
+            : "Telegram";
+        setError(`Please enter recipient contact info for ${chName}`);
+        return;
+      }
     }
 
     let combinedDateTime: Date;
@@ -84,8 +132,10 @@ export default function NewWishPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           recipientName,
-          channel,
-          recipientContact,
+          channels: selectedChannels,
+          contacts,
+          channel: selectedChannels[0],
+          recipientContact: contacts[selectedChannels[0] as keyof typeof contacts],
           recipientTimezone,
           scheduledDate: combinedDateTime.toISOString(),
           repeat,
@@ -173,80 +223,199 @@ export default function NewWishPage() {
             </div>
           </div>
 
-          {/* Delivery Channel Selector */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-2">
-              Delivery Channel *
-            </label>
+          {/* Delivery Channels (Multi-Channel Supported - Idea 2) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-slate-700">
+                Delivery Channels * (Choose one or multiple channels)
+              </label>
+              <button
+                type="button"
+                onClick={selectAllChannels}
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                <span>
+                  {selectedChannels.length === 4
+                    ? "Reset to Single"
+                    : "⚡ Select All (সব মাধ্যমে পাঠান)"}
+                </span>
+              </button>
+            </div>
+
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { id: "WHATSAPP", label: "WhatsApp", icon: MessageSquare, color: "emerald" },
-                { id: "SMS", label: "Direct SMS", icon: Phone, color: "blue" },
-                { id: "EMAIL", label: "Email", icon: Mail, color: "indigo" },
-                { id: "TELEGRAM", label: "Telegram", icon: Send, color: "sky" },
+                {
+                  id: "WHATSAPP",
+                  label: "WhatsApp",
+                  icon: MessageSquare,
+                  activeClass: "border-emerald-500 bg-emerald-50/70 text-emerald-800 ring-2 ring-emerald-500/20",
+                },
+                {
+                  id: "SMS",
+                  label: "Direct SMS",
+                  icon: Phone,
+                  activeClass: "border-blue-500 bg-blue-50/70 text-blue-800 ring-2 ring-blue-500/20",
+                },
+                {
+                  id: "EMAIL",
+                  label: "Email",
+                  icon: Mail,
+                  activeClass: "border-indigo-500 bg-indigo-50/70 text-indigo-800 ring-2 ring-indigo-500/20",
+                },
+                {
+                  id: "TELEGRAM",
+                  label: "Telegram",
+                  icon: Send,
+                  activeClass: "border-sky-500 bg-sky-50/70 text-sky-800 ring-2 ring-sky-500/20",
+                },
               ].map((c) => {
                 const Icon = c.icon;
-                const isSelected = channel === c.id;
+                const isSelected = selectedChannels.includes(c.id);
                 return (
                   <button
                     key={c.id}
                     type="button"
-                    onClick={() => setChannel(c.id as "WHATSAPP" | "SMS" | "EMAIL" | "TELEGRAM")}
-                    className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center space-y-1.5 ${
+                    onClick={() => toggleChannel(c.id)}
+                    className={`p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center space-y-1.5 relative cursor-pointer ${
                       isSelected
-                        ? "border-indigo-600 bg-indigo-50/70 text-indigo-700 font-semibold shadow-xs"
+                        ? `${c.activeClass} font-semibold shadow-xs`
                         : "border-slate-200 text-slate-600 hover:bg-slate-50"
                     }`}
                   >
+                    {isSelected && (
+                      <span className="absolute top-2 right-2 w-4 h-4 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-bold">
+                        ✓
+                      </span>
+                    )}
                     <Icon className="w-5 h-5" />
                     <span className="text-xs">{c.label}</span>
                   </button>
                 );
               })}
             </div>
+            {selectedChannels.length > 1 && (
+              <p className="text-[11px] text-indigo-700 font-medium">
+                ✨ Multi-Channel Delivery: Your wish will be delivered to all {selectedChannels.length} selected channels at the same time!
+              </p>
+            )}
           </div>
 
-          {/* Contact Input & Receiver Location */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Recipient Contact Information *
+          {/* Recipient Contact Information (Per-Channel Dedicated Cards - Idea 2) */}
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="block text-xs font-semibold text-slate-700">
+                Recipient Contact Information * ({selectedChannels.length} channel{selectedChannels.length > 1 ? "s" : ""} selected)
               </label>
-              <input
-                type="text"
-                required
-                placeholder={getContactPlaceholder()}
-                value={recipientContact}
-                onChange={(e) => setRecipientContact(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
-              />
-              {channel === "TELEGRAM" ? (
-                <p className="text-[11px] text-sky-600 mt-1">
-                  💡 Enter recipient&apos;s phone number or @username! Delivered directly to their personal Telegram chat without needing them to start any bot.
-                </p>
-              ) : channel === "WHATSAPP" ? (
-                <p className="text-[11px] text-emerald-600 mt-1">
-                  💡 Enter recipient&apos;s active WhatsApp number with country code (e.g. +88017... or 017...)
-                </p>
-              ) : channel === "EMAIL" ? (
-                <p className="text-[11px] text-indigo-600 mt-1">
-                  💡 Enter recipient&apos;s email address. Delivered directly to their inbox on time!
-                </p>
-              ) : channel === "SMS" ? (
-                <p className="text-[11px] text-blue-600 mt-1">
-                  💡 Enter recipient&apos;s mobile number (e.g. 017... or +88017...). Delivered directly to their phone SIM message inbox!
-                </p>
-              ) : null}
+
+              {/* Show Copy-to-all button if at least 2 phone-based channels are selected */}
+              {selectedPhoneChannels.length > 1 && (
+                <button
+                  type="button"
+                  onClick={copyFirstPhoneToAll}
+                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Copy same number to other channels (এক ক্লিকে কপি করুন)</span>
+                </button>
+              )}
             </div>
 
-            <div>
-              <CountrySelect
-                value={recipientTimezone}
-                onChange={setRecipientTimezone}
-                scheduledDate={scheduledDate}
-                scheduledTime={scheduledTime}
-              />
+            <div className={`grid grid-cols-1 ${selectedChannels.length > 1 ? "sm:grid-cols-2" : ""} gap-3`}>
+              {/* WhatsApp Card */}
+              {selectedChannels.includes("WHATSAPP") && (
+                <div className="p-3.5 rounded-2xl border border-emerald-200 bg-emerald-50/30 space-y-1.5 animate-in fade-in">
+                  <div className="flex items-center space-x-2 text-xs font-bold text-emerald-800">
+                    <MessageSquare className="w-4 h-4 text-emerald-600" />
+                    <span>WhatsApp Number *</span>
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. +8801712345678 or 017..."
+                    value={contacts.WHATSAPP}
+                    onChange={(e) => setContacts({ ...contacts, WHATSAPP: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-emerald-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 bg-white"
+                  />
+                  <p className="text-[11px] text-emerald-600">
+                    💡 Enter active WhatsApp number with country code
+                  </p>
+                </div>
+              )}
+
+              {/* Telegram Card */}
+              {selectedChannels.includes("TELEGRAM") && (
+                <div className="p-3.5 rounded-2xl border border-sky-200 bg-sky-50/30 space-y-1.5 animate-in fade-in">
+                  <div className="flex items-center space-x-2 text-xs font-bold text-sky-800">
+                    <Send className="w-4 h-4 text-sky-600" />
+                    <span>Telegram Number or @username *</span>
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 017..., +88017... or @username"
+                    value={contacts.TELEGRAM}
+                    onChange={(e) => setContacts({ ...contacts, TELEGRAM: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-sky-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-sky-500/20 focus:border-sky-600 bg-white"
+                  />
+                  <p className="text-[11px] text-sky-600">
+                    💡 Personal Telegram phone number or @username
+                  </p>
+                </div>
+              )}
+
+              {/* Direct SMS Card */}
+              {selectedChannels.includes("SMS") && (
+                <div className="p-3.5 rounded-2xl border border-blue-200 bg-blue-50/30 space-y-1.5 animate-in fade-in">
+                  <div className="flex items-center space-x-2 text-xs font-bold text-blue-800">
+                    <Phone className="w-4 h-4 text-blue-600" />
+                    <span>Direct SIM SMS Mobile Number *</span>
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 01712345678 or +88017..."
+                    value={contacts.SMS}
+                    onChange={(e) => setContacts({ ...contacts, SMS: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-blue-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 bg-white"
+                  />
+                  <p className="text-[11px] text-blue-600">
+                    💡 Mobile number for direct phone SIM inbox
+                  </p>
+                </div>
+              )}
+
+              {/* Email Card */}
+              {selectedChannels.includes("EMAIL") && (
+                <div className="p-3.5 rounded-2xl border border-indigo-200 bg-indigo-50/30 space-y-1.5 animate-in fade-in">
+                  <div className="flex items-center space-x-2 text-xs font-bold text-indigo-800">
+                    <Mail className="w-4 h-4 text-indigo-600" />
+                    <span>Recipient Email Address *</span>
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    placeholder="e.g. friend@gmail.com"
+                    value={contacts.EMAIL}
+                    onChange={(e) => setContacts({ ...contacts, EMAIL: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-indigo-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 bg-white"
+                  />
+                  <p className="text-[11px] text-indigo-600">
+                    💡 Delivered directly to recipient&apos;s email inbox
+                  </p>
+                </div>
+              )}
             </div>
+          </div>
+
+          {/* Receiver Location & Country Select */}
+          <div>
+            <CountrySelect
+              value={recipientTimezone}
+              onChange={setRecipientTimezone}
+              scheduledDate={scheduledDate}
+              scheduledTime={scheduledTime}
+            />
           </div>
 
           {/* Date & Time Picker */}

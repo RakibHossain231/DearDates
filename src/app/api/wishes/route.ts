@@ -51,6 +51,8 @@ export async function POST(req: NextRequest) {
     const {
       recipientName,
       channel,
+      channels,
+      contacts,
       recipientContact,
       recipientTimezone = "Asia/Dhaka",
       scheduledDate,
@@ -60,9 +62,9 @@ export async function POST(req: NextRequest) {
       category = "BIRTHDAY",
     } = await req.json();
 
-    if (!recipientName || !channel || !recipientContact || !scheduledDate || !message) {
+    if (!recipientName || !scheduledDate || !message) {
       return NextResponse.json(
-        { error: "Recipient name, channel, contact, scheduled date, and message are required" },
+        { error: "Recipient name, scheduled date, and message are required" },
         { status: 400 }
       );
     }
@@ -72,26 +74,56 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid scheduled date/time" }, { status: 400 });
     }
 
-    const wish = await prisma.wish.create({
-      data: {
-        userId: user.id,
-        recipientName: recipientName.trim(),
-        channel: channel.toUpperCase(),
-        recipientContact: recipientContact.trim(),
-        recipientTimezone,
-        scheduledDate: scheduledDateTime,
-        repeat,
-        deliveryMode: deliveryMode === "PERSONAL_GMAIL" ? "PERSONAL_GMAIL" : "DEFAULT",
-        message: message.trim(),
-        category,
-        status: "PENDING",
-      },
-    });
+    // Support multi-channel broadcast (Idea 2) as well as legacy single channel
+    const itemsToCreate: Array<{ channel: string; contact: string }> = [];
+
+    if (Array.isArray(channels) && channels.length > 0) {
+      for (const ch of channels) {
+        const chKey = String(ch).toUpperCase();
+        const contactVal =
+          (contacts && contacts[chKey]) ||
+          (chKey === (channel || "").toUpperCase() ? recipientContact : "");
+
+        if (contactVal && contactVal.trim()) {
+          itemsToCreate.push({ channel: chKey, contact: contactVal.trim() });
+        }
+      }
+    } else if (channel && recipientContact) {
+      itemsToCreate.push({ channel: channel.toUpperCase(), contact: recipientContact.trim() });
+    }
+
+    if (itemsToCreate.length === 0) {
+      return NextResponse.json(
+        { error: "Please provide valid contact information for at least one selected delivery channel" },
+        { status: 400 }
+      );
+    }
+
+    const createdWishes = await prisma.$transaction(
+      itemsToCreate.map((item) =>
+        prisma.wish.create({
+          data: {
+            userId: user.id,
+            recipientName: recipientName.trim(),
+            channel: item.channel,
+            recipientContact: item.contact,
+            recipientTimezone,
+            scheduledDate: scheduledDateTime,
+            repeat,
+            deliveryMode: deliveryMode === "PERSONAL_GMAIL" ? "PERSONAL_GMAIL" : "DEFAULT",
+            message: message.trim(),
+            category,
+            status: "PENDING",
+          },
+        })
+      )
+    );
 
     return NextResponse.json({
       success: true,
-      message: "Wish scheduled successfully!",
-      wish,
+      message: `${createdWishes.length} celebration wish${createdWishes.length > 1 ? "es" : ""} scheduled successfully!`,
+      wishes: createdWishes,
+      wish: createdWishes[0],
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
