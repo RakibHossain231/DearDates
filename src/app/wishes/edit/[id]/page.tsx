@@ -301,6 +301,19 @@ function EditWishForm() {
                 onChange={(e) => setRecipientContact(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all"
               />
+              {channel === "TELEGRAM" ? (
+                <p className="text-[11px] text-sky-600 mt-1">
+                  💡 Enter recipient&apos;s numeric Chat ID (e.g. 123456789). They can get it by sending any message to <strong>@userinfobot</strong> on Telegram!
+                </p>
+              ) : channel === "WHATSAPP" ? (
+                <p className="text-[11px] text-emerald-600 mt-1">
+                  💡 Enter recipient&apos;s active WhatsApp number with country code (e.g. +88017... or 017...)
+                </p>
+              ) : channel === "EMAIL" ? (
+                <p className="text-[11px] text-indigo-600 mt-1">
+                  💡 Enter recipient&apos;s email address. Delivered directly to their inbox on time!
+                </p>
+              ) : null}
             </div>
 
             <div>

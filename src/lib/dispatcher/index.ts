@@ -65,6 +65,7 @@ export async function dispatchWish(options: SendMessageOptions): Promise<Dispatc
           recipientContact,
           recipientName,
           message,
+          category,
           senderName,
           senderEmail,
           senderPhone,
@@ -313,6 +314,13 @@ function buildSenderFooter(senderName: string, senderEmail?: string | null, send
   return `— *With love from ${senderName}*${contactText}\n_Delivered via DearDates_`;
 }
 
+function escapeHtml(text: string): string {
+  return (text || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 /**
  * 2. Telegram Wish Dispatcher
  */
@@ -320,6 +328,7 @@ async function sendTelegramWish({
   recipientContact,
   recipientName,
   message,
+  category = "BIRTHDAY",
   senderName,
   senderEmail,
   senderPhone,
@@ -327,41 +336,69 @@ async function sendTelegramWish({
   recipientContact: string;
   recipientName: string;
   message: string;
+  category?: string;
   senderName: string;
   senderEmail?: string | null;
   senderPhone?: string | null;
 }): Promise<DispatchResult> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const footer = buildSenderFooter(senderName, senderEmail, senderPhone);
-  const text = `🎉 *Special Wish for ${recipientName}!*\n\n${message}\n\n${footer}`;
 
-  if (token) {
-    try {
-      const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: recipientContact.trim(),
-          text,
-          parse_mode: "Markdown",
-        }),
-      });
-      const data = await res.json();
-      if (data.ok) {
-        return { success: true, channel: "TELEGRAM", response: `Telegram message sent (MsgID: ${data.result.message_id})` };
-      }
-      return { success: false, channel: "TELEGRAM", response: "Telegram Bot API error", error: data.description };
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      return { success: false, channel: "TELEGRAM", response: "Fetch error", error: msg };
-    }
+  if (!token || token.trim() === "") {
+    return {
+      success: false,
+      channel: "TELEGRAM",
+      response: "Telegram Bot not configured",
+      error: "Telegram Bot Token is not configured. Please add TELEGRAM_BOT_TOKEN in Vercel to dispatch real Telegram messages.",
+    };
   }
 
-  return {
-    success: true,
-    channel: "TELEGRAM",
-    response: `Simulated Telegram to ${recipientContact} from ${senderName}`,
-  };
+  let header = `🎉 <b>A Special Celebration Wish for You, ${escapeHtml(recipientName)}!</b> ✨`;
+  const cat = (category || "").toUpperCase();
+  if (cat.includes("BIRTHDAY")) {
+    header = `🎂 <b>Happy Birthday, ${escapeHtml(recipientName)}!</b> 🎈✨`;
+  } else if (cat.includes("ANNIVERSARY")) {
+    header = `💍 <b>Happy Wedding Anniversary, ${escapeHtml(recipientName)}!</b> 🥂✨`;
+  } else if (cat.includes("NEW_YEAR")) {
+    header = `🎆 <b>Happy New Year, ${escapeHtml(recipientName)}!</b> 🌟✨`;
+  }
+
+  const senderContactList: string[] = [];
+  if (senderPhone) senderContactList.push(`📱 <b>Phone / WhatsApp:</b> ${escapeHtml(senderPhone)}`);
+  if (senderEmail) senderContactList.push(`📧 <b>Email:</b> ${escapeHtml(senderEmail)}`);
+  const senderContactSection = senderContactList.length > 0 ? `\n${senderContactList.join("\n")}` : "";
+
+  const htmlText = `${header}\n\n"${escapeHtml(message)}"\n\n━━━━━━━━━━━━━━━━━━━━\n💝 <b>Sent with warm love by:</b>\n👤 <b>${escapeHtml(senderName)}</b>${senderContactSection}\n━━━━━━━━━━━━━━━━━━━━\n<i>Delivered automatically right on time via DearDates</i> ⏰✨`;
+
+  const chatId = recipientContact.trim();
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token.trim()}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text: htmlText,
+        parse_mode: "HTML",
+      }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      return {
+        success: true,
+        channel: "TELEGRAM",
+        response: `Sent via Telegram Bot (MsgID: ${data.result.message_id})`,
+      };
+    }
+    return {
+      success: false,
+      channel: "TELEGRAM",
+      response: "Telegram Bot API error",
+      error: data.description || JSON.stringify(data),
+    };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { success: false, channel: "TELEGRAM", response: "Fetch error", error: msg };
+  }
 }
 
 function formatWhatsAppNumber(phone: string): string {
