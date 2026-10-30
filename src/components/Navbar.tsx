@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Sparkles, Calendar, PlusCircle, User, LogOut, Clock, Gift } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface UserData {
   id: string;
@@ -44,18 +45,18 @@ export default function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200/80 shadow-xs">
+    <header className="sticky top-0 z-50 bg-white/90 dark:bg-slate-950/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 shadow-xs transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Brand Logo */}
         <Link href={user ? "/dashboard" : "/"} className="flex items-center space-x-2 group">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-200 group-hover:scale-105 transition-transform">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-200 dark:shadow-indigo-900/30 group-hover:scale-105 transition-transform">
             <Gift className="w-5 h-5" />
           </div>
           <div>
             <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
               DearDates
             </span>
-            <span className="hidden sm:inline-block ml-1.5 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+            <span className="hidden sm:inline-block ml-1.5 text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">
               Never Forget
             </span>
           </div>
@@ -73,25 +74,28 @@ export default function Navbar() {
                   href={item.href}
                   className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     isActive
-                      ? "bg-indigo-50 text-indigo-700 shadow-xs font-semibold"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
+                      ? "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-400 shadow-xs font-semibold"
+                      : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100/80 dark:hover:bg-slate-900"
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? "text-indigo-600" : "text-slate-400"}`} />
+                  <Icon className={`w-4 h-4 ${isActive ? "text-indigo-600 dark:text-indigo-400" : "text-slate-400 dark:text-slate-500"}`} />
                   <span className="hidden md:inline">{item.name}</span>
                 </Link>
               );
             })}
 
-            <div className="h-5 w-[1px] bg-slate-200 mx-2" />
+            <div className="h-5 w-[1px] bg-slate-200 dark:bg-slate-800 mx-1.5" />
+
+            {/* Day / Night Mode Toggle */}
+            <ThemeToggle />
 
             {/* Profile Dropdown / Link */}
             <Link
               href="/profile"
               className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg border transition-all ${
                 pathname === "/profile"
-                  ? "border-indigo-300 bg-indigo-50 text-indigo-700"
-                  : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                  ? "border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300"
+                  : "border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900"
               }`}
             >
               <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-indigo-500 to-amber-500 text-white flex items-center justify-center text-xs font-bold uppercase">
@@ -106,24 +110,27 @@ export default function Navbar() {
             <button
               onClick={handleLogout}
               title="Logout"
-              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              className="p-2 text-slate-400 dark:text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
             </button>
           </nav>
         ) : (
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            {/* Day / Night Mode Toggle for logged out visitors */}
+            <ThemeToggle />
+
             {!loading && (
               <>
                 <Link
                   href="/login"
-                  className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-indigo-600 transition-colors"
+                  className="px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
                 >
                   Sign In
                 </Link>
                 <Link
                   href="/register"
-                  className="px-4 py-2 text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-all hover:scale-[1.02]"
+                  className="px-4 py-2 text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 shadow-md shadow-indigo-100 dark:shadow-indigo-950/50 transition-all hover:scale-[1.02]"
                 >
                   Get Started Free
                 </Link>
