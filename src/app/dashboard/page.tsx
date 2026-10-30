@@ -18,14 +18,17 @@ import {
   Sparkles,
   RefreshCw,
   Search,
+  Globe,
 } from "lucide-react";
 import { format } from "date-fns";
+import { getOccasionLabel } from "@/lib/occasions";
 
 interface Wish {
   id: string;
   recipientName: string;
   channel: string;
   recipientContact: string;
+  recipientTimezone?: string;
   scheduledDate: string;
   repeat: string;
   message: string;
@@ -320,7 +323,12 @@ export default function DashboardPage() {
                         <h3 className="font-bold text-slate-900 leading-tight">
                           {wish.recipientName}
                         </h3>
-                        <p className="text-xs text-slate-500">{wish.recipientContact}</p>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          <p className="text-xs text-slate-500">{wish.recipientContact}</p>
+                          <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md">
+                            {getOccasionLabel(wish.category)}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
@@ -333,6 +341,13 @@ export default function DashboardPage() {
                       <Calendar className="w-3.5 h-3.5 text-indigo-500" />
                       <span>{format(dateObj, "MMM d, yyyy • h:mm a")}</span>
                     </div>
+
+                    {wish.recipientTimezone && (
+                      <span className="inline-flex items-center space-x-1 text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md text-[11px]">
+                        <Globe className="w-3 h-3 text-slate-400" />
+                        <span>{wish.recipientTimezone.split("/")[1]?.replace(/_/g, " ") || wish.recipientTimezone}</span>
+                      </span>
+                    )}
 
                     {wish.repeat !== "NONE" ? (
                       <span className="inline-flex items-center space-x-1 text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md font-semibold text-[11px]">

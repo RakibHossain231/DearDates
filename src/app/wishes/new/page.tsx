@@ -19,6 +19,8 @@ import {
   Globe,
 } from "lucide-react";
 import AiWishModal from "@/components/AiWishModal";
+import CountrySelect from "@/components/CountrySelect";
+import { OCCASIONS } from "@/lib/occasions";
 import { fromZonedTime } from "date-fns-tz";
 
 export default function NewWishPage() {
@@ -162,10 +164,11 @@ export default function NewWishPage() {
                 onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all bg-white"
               >
-                <option value="BIRTHDAY">🎂 Birthday Celebration</option>
-                <option value="ANNIVERSARY">💍 Wedding / Anniversary</option>
-                <option value="NEW_YEAR">🎆 New Year Celebration</option>
-                <option value="CUSTOM">🌟 Special Event / Custom</option>
+                {OCCASIONS.map((occ) => (
+                  <option key={occ.id} value={occ.id}>
+                    {occ.emoji} {occ.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -237,44 +240,12 @@ export default function NewWishPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Receiver&apos;s Country / Timezone *
-              </label>
-              <div className="relative">
-                <Globe className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                <select
-                  value={recipientTimezone}
-                  onChange={(e) => setRecipientTimezone(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-all bg-white"
-                >
-                  <option value="Asia/Dhaka">🇧🇩 Bangladesh (GMT+6)</option>
-                  <option value="Asia/Kolkata">🇮🇳 India (GMT+5:30)</option>
-                  <option value="Asia/Dubai">🇦🇪 UAE / Dubai (GMT+4)</option>
-                  <option value="Asia/Riyadh">🇸🇦 Saudi Arabia (GMT+3)</option>
-                  <option value="Asia/Qatar">🇶🇦 Qatar (GMT+3)</option>
-                  <option value="Asia/Kuwait">🇰🇼 Kuwait (GMT+3)</option>
-                  <option value="Asia/Muscat">🇴🇲 Oman (GMT+4)</option>
-                  <option value="Asia/Kuala_Lumpur">🇲🇾 Malaysia (GMT+8)</option>
-                  <option value="Asia/Singapore">🇸🇬 Singapore (GMT+8)</option>
-                  <option value="Europe/London">🇬🇧 United Kingdom (GMT+0 / BST)</option>
-                  <option value="Europe/Berlin">🇩🇪 Germany / Central Europe (GMT+1)</option>
-                  <option value="Europe/Rome">🇮🇹 Italy (GMT+1)</option>
-                  <option value="Europe/Paris">🇫🇷 France (GMT+1)</option>
-                  <option value="America/New_York">🇺🇸 USA East (New York, Florida - EST)</option>
-                  <option value="America/Chicago">🇺🇸 USA Central (Texas, Chicago - CST)</option>
-                  <option value="America/Los_Angeles">🇺🇸 USA West (California, Seattle - PST)</option>
-                  <option value="America/Toronto">🇨🇦 Canada (Toronto, Montreal)</option>
-                  <option value="America/Vancouver">🇨🇦 Canada West (Vancouver)</option>
-                  <option value="Australia/Sydney">🇦🇺 Australia (Sydney, Melbourne)</option>
-                  <option value="Asia/Tokyo">🇯🇵 Japan (GMT+9)</option>
-                  <option value="Asia/Seoul">🇰🇷 South Korea (GMT+9)</option>
-                  <option value="Pacific/Auckland">🇳🇿 New Zealand (GMT+12/13)</option>
-                  <option value="UTC">🌐 Universal UTC</option>
-                </select>
-              </div>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Ensures midnight wishes arrive right at 00:01 in the receiver&apos;s country!
-              </p>
+              <CountrySelect
+                value={recipientTimezone}
+                onChange={setRecipientTimezone}
+                scheduledDate={scheduledDate}
+                scheduledTime={scheduledTime}
+              />
             </div>
           </div>
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Sparkles, X, Wand2, Check, RefreshCw } from "lucide-react";
+import { OCCASIONS } from "@/lib/occasions";
 
 interface AiWishModalProps {
   isOpen: boolean;
@@ -92,6 +93,23 @@ export default function AiWishModal({
         </div>
 
         <div className="space-y-4 my-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 mb-1">
+              Celebration Occasion
+            </label>
+            <select
+              value={occasion}
+              onChange={(e) => setOccasion(e.target.value)}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 bg-white"
+            >
+              {OCCASIONS.map((occ) => (
+                <option key={occ.id} value={occ.id}>
+                  {occ.emoji} {occ.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-600 mb-1">
