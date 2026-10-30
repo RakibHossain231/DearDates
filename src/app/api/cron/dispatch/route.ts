@@ -44,6 +44,9 @@ async function handleDispatch(req: NextRequest) {
             smtpEmail: true,
             smtpPassword: true,
             deliveryNotification: true,
+            telegramApiId: true,
+            telegramApiHash: true,
+            telegramSession: true,
           },
         },
       },
@@ -64,6 +67,9 @@ async function handleDispatch(req: NextRequest) {
           deliveryMode: wish.deliveryMode,
           smtpEmail: wish.user.smtpEmail,
           smtpPassword: wish.user.smtpPassword,
+          telegramApiId: wish.user.telegramApiId,
+          telegramApiHash: wish.user.telegramApiHash,
+          telegramSession: wish.user.telegramSession,
         });
 
         // Record delivery log

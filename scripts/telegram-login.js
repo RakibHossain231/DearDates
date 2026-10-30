@@ -111,6 +111,22 @@ async function main() {
 
     fs.writeFileSync(envPath, envContent.trim() + "\n", "utf-8");
 
+    try {
+      const { PrismaClient } = require("@prisma/client");
+      const prisma = new PrismaClient();
+      await prisma.user.updateMany({
+        data: {
+          telegramApiId: numericApiId.toString(),
+          telegramApiHash: apiHash,
+          telegramSession: sessionString,
+        },
+      });
+      await prisma.$disconnect();
+      console.log("✓ Also synced Telegram session directly to Supabase Database!");
+    } catch (dbSyncErr) {
+      console.warn("⚠️ Could not sync session to DB automatically:", dbSyncErr.message);
+    }
+
     console.log("\n✓ TELEGRAM_API_ID, TELEGRAM_API_HASH, and TELEGRAM_SESSION_STRING");
     console.log("  have been saved to your .env file!");
     console.log("\nDearDates is now ready to dispatch Telegram wishes directly to any phone number! 🚀\n");

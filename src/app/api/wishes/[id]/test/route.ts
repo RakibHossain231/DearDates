@@ -25,6 +25,9 @@ export async function POST(
           senderName: true,
           smtpEmail: true,
           smtpPassword: true,
+          telegramApiId: true,
+          telegramApiHash: true,
+          telegramSession: true,
         },
       },
     },
@@ -47,6 +50,9 @@ export async function POST(
       deliveryMode: wish.deliveryMode,
       smtpEmail: wish.user.smtpEmail,
       smtpPassword: wish.user.smtpPassword,
+      telegramApiId: wish.user.telegramApiId,
+      telegramApiHash: wish.user.telegramApiHash,
+      telegramSession: wish.user.telegramSession,
     });
 
     // Record delivery log

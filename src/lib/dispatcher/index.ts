@@ -17,6 +17,9 @@ export interface SendMessageOptions {
   deliveryMode?: string; // "DEFAULT" or "PERSONAL_GMAIL"
   smtpEmail?: string | null;
   smtpPassword?: string | null;
+  telegramApiId?: string | null;
+  telegramApiHash?: string | null;
+  telegramSession?: string | null;
 }
 
 export interface DispatchResult {
@@ -42,6 +45,9 @@ export async function dispatchWish(options: SendMessageOptions): Promise<Dispatc
     deliveryMode = "DEFAULT",
     smtpEmail,
     smtpPassword,
+    telegramApiId,
+    telegramApiHash,
+    telegramSession,
   } = options;
 
   try {
@@ -69,6 +75,9 @@ export async function dispatchWish(options: SendMessageOptions): Promise<Dispatc
           senderName,
           senderEmail,
           senderPhone,
+          telegramApiId,
+          telegramApiHash,
+          telegramSession,
         });
 
       case "WHATSAPP":
@@ -332,6 +341,9 @@ async function sendTelegramWish({
   senderName,
   senderEmail,
   senderPhone,
+  telegramApiId,
+  telegramApiHash,
+  telegramSession,
 }: {
   recipientContact: string;
   recipientName: string;
@@ -340,6 +352,9 @@ async function sendTelegramWish({
   senderName: string;
   senderEmail?: string | null;
   senderPhone?: string | null;
+  telegramApiId?: string | null;
+  telegramApiHash?: string | null;
+  telegramSession?: string | null;
 }): Promise<DispatchResult> {
   const contact = recipientContact.trim();
 
@@ -361,7 +376,7 @@ async function sendTelegramWish({
   const htmlText = `${header}\n\n"${escapeHtml(message)}"\n\n━━━━━━━━━━━━━━━━━━━━\n💝 <b>Sent with warm love by:</b>\n👤 <b>${escapeHtml(senderName)}</b>${senderContactSection}\n━━━━━━━━━━━━━━━━━━━━\n<i>Delivered automatically right on time via DearDates</i> ⏰✨`;
 
   // Dynamically ensure latest .env values are loaded in case server hasn't restarted
-  if (!process.env.TELEGRAM_SESSION_STRING) {
+  if (!process.env.TELEGRAM_SESSION_STRING && !telegramSession) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
       const dotenv = require("dotenv");
@@ -372,9 +387,27 @@ async function sendTelegramWish({
   }
 
   // 1. Primary: Telegram MTProto User Session (Idea 1 — Direct to phone number or username)
-  const apiIdStr = process.env.TELEGRAM_API_ID;
-  const apiHash = process.env.TELEGRAM_API_HASH;
-  const sessionString = process.env.TELEGRAM_SESSION_STRING;
+  let apiIdStr = telegramApiId || process.env.TELEGRAM_API_ID;
+  let apiHash = telegramApiHash || process.env.TELEGRAM_API_HASH;
+  let sessionString = telegramSession || process.env.TELEGRAM_SESSION_STRING;
+
+  // Fallback to Supabase database if session not in env (e.g. Vercel deployment before env restart)
+  if (!sessionString) {
+    try {
+      const { prisma } = await import("@/lib/prisma");
+      const userWithTg = await prisma.user.findFirst({
+        where: { telegramSession: { not: null } },
+        select: { telegramApiId: true, telegramApiHash: true, telegramSession: true },
+      });
+      if (userWithTg?.telegramSession) {
+        apiIdStr = userWithTg.telegramApiId || apiIdStr;
+        apiHash = userWithTg.telegramApiHash || apiHash;
+        sessionString = userWithTg.telegramSession;
+      }
+    } catch (dbErr) {
+      console.error("Failed to query telegram session from DB:", dbErr);
+    }
+  }
 
   if (apiIdStr && apiHash && sessionString) {
     try {
