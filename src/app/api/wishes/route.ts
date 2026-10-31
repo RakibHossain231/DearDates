@@ -25,7 +25,10 @@ export async function GET(req: NextRequest) {
   try {
     const wishes = await prisma.wish.findMany({
       where: whereClause,
-      orderBy: { scheduledDate: "asc" },
+      orderBy: [
+        { scheduledDate: "desc" },
+        { createdAt: "desc" },
+      ],
       include: {
         deliveryLogs: {
           orderBy: { sentAt: "desc" },

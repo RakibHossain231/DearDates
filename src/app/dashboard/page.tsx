@@ -19,6 +19,7 @@ import {
   RefreshCw,
   Search,
   Globe,
+  ArrowUpDown,
 } from "lucide-react";
 import { format } from "date-fns";
 import { getOccasionLabel } from "@/lib/occasions";
@@ -43,6 +44,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
+  const [sortOrder, setSortOrder] = useState<"DESC" | "ASC">("DESC");
   const [cronRunning, setCronRunning] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
@@ -124,11 +126,17 @@ export default function DashboardPage() {
     }
   };
 
-  const filteredWishes = wishes.filter((w) =>
-    w.recipientName.toLowerCase().includes(search.toLowerCase()) ||
-    w.message.toLowerCase().includes(search.toLowerCase()) ||
-    w.recipientContact.includes(search)
-  );
+  const filteredWishes = wishes
+    .filter((w) =>
+      w.recipientName.toLowerCase().includes(search.toLowerCase()) ||
+      w.message.toLowerCase().includes(search.toLowerCase()) ||
+      w.recipientContact.includes(search)
+    )
+    .sort((a, b) => {
+      const timeA = new Date(a.scheduledDate).getTime();
+      const timeB = new Date(b.scheduledDate).getTime();
+      return sortOrder === "DESC" ? timeB - timeA : timeA - timeB;
+    });
 
   const pendingCount = wishes.filter((w) => w.status === "PENDING").length;
   const sentCount = wishes.filter((w) => w.status === "SENT").length;
@@ -244,9 +252,9 @@ export default function DashboardPage() {
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs mb-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs mb-6 flex flex-col lg:flex-row items-center justify-between gap-4">
         {/* Search Input */}
-        <div className="relative w-full sm:w-72">
+        <div className="relative w-full lg:w-72">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
           <input
             type="text"
@@ -257,21 +265,37 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Status Filter Tabs */}
-        <div className="flex items-center space-x-1.5 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-          {["ALL", "PENDING", "SENT", "FAILED"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                filter === tab
-                  ? "bg-indigo-600 text-white shadow-xs"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
+        {/* Status Filter Tabs & Sort Order */}
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto justify-between lg:justify-end">
+          {/* Status Filter Tabs */}
+          <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 sm:pb-0">
+            {["ALL", "PENDING", "SENT", "FAILED"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setFilter(tab)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  filter === tab
+                    ? "bg-indigo-600 text-white shadow-xs"
+                    : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                {tab === "ALL" ? "All Wishes" : tab}
+              </button>
+            ))}
+          </div>
+
+          {/* Sort Selector */}
+          <div className="flex items-center space-x-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
+            <ArrowUpDown className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as "DESC" | "ASC")}
+              className="bg-transparent text-xs font-semibold text-slate-700 focus:outline-hidden cursor-pointer"
             >
-              {tab === "ALL" ? "All Wishes" : tab}
-            </button>
-          ))}
+              <option value="DESC">Latest Set Date (নতুন সময় আগে)</option>
+              <option value="ASC">Earliest Set Date (পুরনো সময় আগে)</option>
+            </select>
+          </div>
         </div>
       </div>
 
