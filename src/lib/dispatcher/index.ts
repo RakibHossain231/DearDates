@@ -155,19 +155,38 @@ async function sendEmailWish({
   smtpEmail?: string | null;
   smtpPassword?: string | null;
 }): Promise<DispatchResult> {
-  const subject = `🎉 A Special ${category} Wish for You, ${recipientName}!`;
+  const cat = (category || "").toUpperCase();
+  let occasionEmoji = "🎉";
+  let occasionTitle = "Celebration";
+  if (cat.includes("BIRTHDAY")) { occasionEmoji = "🎂"; occasionTitle = "Birthday"; }
+  else if (cat.includes("ANNIVERSARY")) { occasionEmoji = "💍"; occasionTitle = "Anniversary"; }
+  else if (cat.includes("NEW_YEAR")) { occasionEmoji = "🎆"; occasionTitle = "New Year"; }
+  else if (cat.includes("EID_FITR")) { occasionEmoji = "🌙"; occasionTitle = "Eid-ul-Fitr"; }
+  else if (cat.includes("EID_ADHA")) { occasionEmoji = "🕋"; occasionTitle = "Eid-ul-Adha"; }
+  else if (cat.includes("GRADUATION")) { occasionEmoji = "🎓"; occasionTitle = "Graduation"; }
+  else if (cat.includes("PROMOTION") || cat.includes("JOB")) { occasionEmoji = "💼"; occasionTitle = "Promotion"; }
+  else if (cat.includes("VALENTINE")) { occasionEmoji = "❤️"; occasionTitle = "Valentine's Day"; }
+  else if (cat.includes("BABY") || cat.includes("NEW_BORN")) { occasionEmoji = "👶"; occasionTitle = "New Born Celebration"; }
+  else if (cat.includes("HOME") || cat.includes("HOUSEWARMING")) { occasionEmoji = "🏡"; occasionTitle = "Housewarming"; }
+  else if (cat.includes("FRIENDSHIP")) { occasionEmoji = "🤝"; occasionTitle = "Friendship Day"; }
+  else if (cat.includes("GET_WELL")) { occasionEmoji = "🩹"; occasionTitle = "Speedy Recovery"; }
+  else if (cat.includes("THANK_YOU")) { occasionEmoji = "🙏"; occasionTitle = "Gratitude & Thanks"; }
+  else if (cat.includes("DIWALI")) { occasionEmoji = "🪔"; occasionTitle = "Diwali"; }
+  else if (cat.includes("CHRISTMAS")) { occasionEmoji = "🎄"; occasionTitle = "Merry Christmas"; }
+
+  const subject = `${occasionEmoji} A Special ${occasionTitle} Wish for You, ${recipientName}! ✨`;
 
   // Build clean sender contact badge for display inside the email
   const senderContactList: string[] = [];
-  if (senderEmail) {
-    senderContactList.push(`<span>📧 Email: <a href="mailto:${senderEmail}" style="color: #4f46e5; text-decoration: none; font-weight: 500;">${senderEmail}</a></span>`);
+  if (senderPhone && senderPhone.trim()) {
+    senderContactList.push(`<span>📱 <a href="tel:${escapeHtml(senderPhone.trim())}" style="color: #4f46e5; text-decoration: none; font-weight: 500;">${escapeHtml(senderPhone.trim())}</a></span>`);
   }
-  if (senderPhone) {
-    senderContactList.push(`<span>📱 Phone / WhatsApp: <a href="tel:${senderPhone}" style="color: #4f46e5; text-decoration: none; font-weight: 500;">${senderPhone}</a></span>`);
+  if (senderEmail && senderEmail.trim()) {
+    senderContactList.push(`<span>📧 <a href="mailto:${escapeHtml(senderEmail.trim())}" style="color: #4f46e5; text-decoration: none; font-weight: 500;">${escapeHtml(senderEmail.trim())}</a></span>`);
   }
 
   const senderContactHtml = senderContactList.length > 0
-    ? `<div style="margin-top: 6px; font-size: 13px; color: #64748b; line-height: 1.6;">${senderContactList.join("<br>")}</div>`
+    ? `<div style="margin-top: 8px; font-size: 13px; color: #64748b; line-height: 1.6;">${senderContactList.join(" &nbsp;•&nbsp; ")}</div>`
     : "";
 
   const htmlContent = `
@@ -178,41 +197,38 @@ async function sendEmailWish({
         <style>
           body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; }
           .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; }
-          .header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 40px 20px; text-align: center; color: #ffffff; }
-          .header h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; }
+          .header { background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); padding: 36px 20px; text-align: center; color: #ffffff; }
+          .header h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
           .content { padding: 35px 30px; text-align: center; }
           .greeting { font-size: 20px; font-weight: 600; color: #1e293b; margin-bottom: 20px; }
-          .message-box { background: #fdf4ff; border-left: 4px solid #c026d3; padding: 22px; border-radius: 12px; margin: 25px 0; font-size: 17px; line-height: 1.6; color: #334155; text-align: left; white-space: pre-line; }
+          .message-box { background: #fdf4ff; border-left: 4px solid #c026d3; padding: 22px; border-radius: 12px; margin: 25px 0; font-size: 17px; line-height: 1.7; color: #334155; text-align: left; white-space: pre-line; }
           .sender-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; margin-top: 25px; text-align: left; }
-          .footer { background: #f1f5f9; padding: 20px; text-align: center; font-size: 13px; color: #64748b; }
-          .badge { display: inline-block; background: #e0e7ff; color: #4338ca; padding: 6px 14px; border-radius: 50px; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 15px; }
+          .footer { background: #f8fafc; padding: 16px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; }
+          .badge { display: inline-block; background: rgba(255,255,255,0.2); color: #ffffff; padding: 6px 14px; border-radius: 50px; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 0.5px; }
         </style>
       </head>
       <body>
         <div class="card">
           <div class="header">
-            <span class="badge">DearDates Celebration</span>
-            <h1>Warm Wishes For You! 🎂✨</h1>
+            <span class="badge">${occasionEmoji} ${occasionTitle} Celebration</span>
+            <h1>Warm Wishes For You! ✨</h1>
           </div>
           <div class="content">
-            <div class="greeting">Dear ${recipientName},</div>
+            <div class="greeting">Dear ${escapeHtml(recipientName)},</div>
             <div class="message-box">
-              ${message}
+              ${escapeHtml(message)}
             </div>
 
-            <!-- Clear Sender Identification Card -->
+            <!-- Intimate Personal Sign-off -->
             <div class="sender-card">
-              <div style="font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
-                💝 Delivered on behalf of
-              </div>
-              <div style="font-size: 16px; font-weight: 700; color: #1e293b; margin-top: 4px;">
-                ${senderName}
+              <div style="font-size: 17px; font-weight: 700; color: #1e293b;">
+                — With warm love, ${escapeHtml(senderName)} ❤️
               </div>
               ${senderContactHtml}
             </div>
           </div>
           <div class="footer">
-            Delivered automatically with care via <strong style="color: #4f46e5;">DearDates</strong> • Never miss an important date.
+            Sent with warm love via DearDates
           </div>
         </div>
       </body>
@@ -321,22 +337,56 @@ async function sendEmailWish({
   };
 }
 
-/**
- * Helper to build text sender info for chat / SMS / Telegram
- */
-function buildSenderFooter(senderName: string, senderEmail?: string | null, senderPhone?: string | null): string {
-  const parts: string[] = [];
-  if (senderPhone) parts.push(`📱 ${senderPhone}`);
-  if (senderEmail) parts.push(`📧 ${senderEmail}`);
-  const contactText = parts.length > 0 ? ` (${parts.join(" | ")})` : "";
-  return `— *With love from ${senderName}*${contactText}\n_Delivered via DearDates_`;
-}
-
 function escapeHtml(text: string): string {
   return (text || "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+function buildOccasionHeader(category: string, recipientName: string, isHtml: boolean = false): string {
+  const cat = (category || "").toUpperCase();
+  const safeName = isHtml ? escapeHtml(recipientName) : recipientName;
+  const b = (text: string) => (isHtml ? `<b>${text}</b>` : `*${text}*`);
+
+  if (cat.includes("BIRTHDAY")) return `🎂 ${b(`Happy Birthday, ${safeName}!`)} 🎈✨`;
+  if (cat.includes("ANNIVERSARY")) return `💍 ${b(`Happy Wedding Anniversary, ${safeName}!`)} 🥂✨`;
+  if (cat.includes("NEW_YEAR")) return `🎆 ${b(`Happy New Year, ${safeName}!`)} 🌟✨`;
+  if (cat.includes("EID_FITR")) return `🌙 ${b(`Eid-ul-Fitr Mubarak, ${safeName}!`)} ✨`;
+  if (cat.includes("EID_ADHA")) return `🕋 ${b(`Eid-ul-Adha Mubarak, ${safeName}!`)} ✨`;
+  if (cat.includes("GRADUATION")) return `🎓 ${b(`Happy Graduation, ${safeName}!`)} 🌟✨`;
+  if (cat.includes("PROMOTION") || cat.includes("JOB")) return `💼 ${b(`Congratulations on Your Promotion, ${safeName}!`)} 🚀✨`;
+  if (cat.includes("VALENTINE")) return `❤️ ${b(`Happy Valentine's Day, ${safeName}!`)} 🌹✨`;
+  if (cat.includes("BABY") || cat.includes("NEW_BORN")) return `👶 ${b(`Warm Welcome to the Little Angel, ${safeName}!`)} 🍼✨`;
+  if (cat.includes("HOME") || cat.includes("HOUSEWARMING")) return `🏡 ${b(`Happy Housewarming, ${safeName}!`)} 🔑✨`;
+  if (cat.includes("FRIENDSHIP")) return `🤝 ${b(`Happy Friendship Day, ${safeName}!`)} 💖✨`;
+  if (cat.includes("GET_WELL")) return `🩹 ${b(`Wishing You a Speedy Recovery, ${safeName}!`)} 🌸✨`;
+  if (cat.includes("THANK_YOU")) return `🙏 ${b(`A Heartfelt Thank You, ${safeName}!`)} 💖✨`;
+  if (cat.includes("DIWALI")) return `🪔 ${b(`Happy Diwali, ${safeName}!`)} 🌟✨`;
+  if (cat.includes("CHRISTMAS")) return `🎄 ${b(`Merry Christmas, ${safeName}!`)} 🎅✨`;
+
+  return `🎉 ${b(`A Special Celebration Wish for You, ${safeName}!`)} ✨`;
+}
+
+function buildSenderSignoff(
+  senderName: string,
+  senderPhone?: string | null,
+  senderEmail?: string | null,
+  isHtml: boolean = false
+): string {
+  const safeName = isHtml ? escapeHtml(senderName) : senderName;
+  const b = (text: string) => (isHtml ? `<b>${text}</b>` : `*${text}*`);
+
+  const contactParts: string[] = [];
+  if (senderPhone && senderPhone.trim()) {
+    contactParts.push(`📱 ${isHtml ? escapeHtml(senderPhone.trim()) : senderPhone.trim()}`);
+  }
+  if (senderEmail && senderEmail.trim()) {
+    contactParts.push(`📧 ${isHtml ? escapeHtml(senderEmail.trim()) : senderEmail.trim()}`);
+  }
+
+  const contactLine = contactParts.length > 0 ? `\n${contactParts.join(" • ")}` : "";
+  return `— ${b(`With warm love, ${safeName}`)} ❤️${contactLine}`;
 }
 
 /**
@@ -370,22 +420,9 @@ async function sendTelegramWish({
 }): Promise<DispatchResult> {
   const contact = recipientContact.trim();
 
-  let header = `🎉 <b>A Special Celebration Wish for You, ${escapeHtml(recipientName)}!</b> ✨`;
-  const cat = (category || "").toUpperCase();
-  if (cat.includes("BIRTHDAY")) {
-    header = `🎂 <b>Happy Birthday, ${escapeHtml(recipientName)}!</b> 🎈✨`;
-  } else if (cat.includes("ANNIVERSARY")) {
-    header = `💍 <b>Happy Wedding Anniversary, ${escapeHtml(recipientName)}!</b> 🥂✨`;
-  } else if (cat.includes("NEW_YEAR")) {
-    header = `🎆 <b>Happy New Year, ${escapeHtml(recipientName)}!</b> 🌟✨`;
-  }
-
-  const senderContactList: string[] = [];
-  if (senderPhone) senderContactList.push(`📱 <b>Phone / WhatsApp:</b> ${escapeHtml(senderPhone)}`);
-  if (senderEmail) senderContactList.push(`📧 <b>Email:</b> ${escapeHtml(senderEmail)}`);
-  const senderContactSection = senderContactList.length > 0 ? `\n${senderContactList.join("\n")}` : "";
-
-  const htmlText = `${header}\n\n"${escapeHtml(message)}"\n\n━━━━━━━━━━━━━━━━━━━━\n💝 <b>Sent with warm love by:</b>\n👤 <b>${escapeHtml(senderName)}</b>${senderContactSection}\n━━━━━━━━━━━━━━━━━━━━\n<i>Delivered automatically right on time via DearDates</i> ⏰✨`;
+  const header = buildOccasionHeader(category, recipientName, true);
+  const signoff = buildSenderSignoff(senderName, senderPhone, senderEmail, true);
+  const htmlText = `${header}\n\n${escapeHtml(message)}\n\n${signoff}`;
 
   // Dynamically ensure latest .env values are loaded in case server hasn't restarted
   if (!process.env.TELEGRAM_SESSION_STRING && !telegramSession) {
@@ -697,22 +734,9 @@ async function sendWhatsAppWish({
   senderEmail?: string | null;
   senderPhone?: string | null;
 }): Promise<DispatchResult> {
-  let header = `🎉 *A Special Celebration Wish for You, ${recipientName}!* ✨`;
-  const cat = (category || "").toUpperCase();
-  if (cat.includes("BIRTHDAY")) {
-    header = `🎂 *Happy Birthday, ${recipientName}!* 🎈✨`;
-  } else if (cat.includes("ANNIVERSARY")) {
-    header = `💍 *Happy Wedding Anniversary, ${recipientName}!* 🥂✨`;
-  } else if (cat.includes("NEW_YEAR")) {
-    header = `🎆 *Happy New Year, ${recipientName}!* 🌟✨`;
-  }
-
-  const senderContactList: string[] = [];
-  if (senderPhone) senderContactList.push(`📱 *WhatsApp / Phone:* ${senderPhone}`);
-  if (senderEmail) senderContactList.push(`📧 *Email:* ${senderEmail}`);
-  const senderContactSection = senderContactList.length > 0 ? `\n${senderContactList.join("\n")}` : "";
-
-  const formattedMsg = `${header}\n\n"${message}"\n\n━━━━━━━━━━━━━━━━━━━━\n💝 *Sent with warm love by:*\n👤 *${senderName}*${senderContactSection}\n━━━━━━━━━━━━━━━━━━━━\n_Delivered automatically right on time via DearDates_ ⏰✨`;
+  const header = buildOccasionHeader(category, recipientName, false);
+  const signoff = buildSenderSignoff(senderName, senderPhone, senderEmail, false);
+  const formattedMsg = `${header}\n\n${message}\n\n${signoff}`;
 
   const result = await dispatchWhatsAppMessage(recipientContact, formattedMsg);
   return {
@@ -766,14 +790,27 @@ async function sendSmsWish({
   const contact = recipientContact.trim();
   const formattedPhone = formatBdPhoneNumber(contact);
 
-  const senderContactInfo = senderPhone || senderEmail || "";
-  let occasionHeader = "Warm Wishes";
   const cat = (category || "").toUpperCase();
-  if (cat.includes("BIRTHDAY")) occasionHeader = "Happy Birthday";
-  else if (cat.includes("ANNIVERSARY")) occasionHeader = "Happy Anniversary";
-  else if (cat.includes("NEW_YEAR")) occasionHeader = "Happy New Year";
+  let occasionEmoji = "🎉";
+  let occasionHeader = "Warm Wishes";
+  if (cat.includes("BIRTHDAY")) { occasionEmoji = "🎂"; occasionHeader = "Happy Birthday"; }
+  else if (cat.includes("ANNIVERSARY")) { occasionEmoji = "💍"; occasionHeader = "Happy Anniversary"; }
+  else if (cat.includes("NEW_YEAR")) { occasionEmoji = "🎆"; occasionHeader = "Happy New Year"; }
+  else if (cat.includes("EID_FITR")) { occasionEmoji = "🌙"; occasionHeader = "Eid-ul-Fitr Mubarak"; }
+  else if (cat.includes("EID_ADHA")) { occasionEmoji = "🕋"; occasionHeader = "Eid-ul-Adha Mubarak"; }
+  else if (cat.includes("GRADUATION")) { occasionEmoji = "🎓"; occasionHeader = "Happy Graduation"; }
+  else if (cat.includes("PROMOTION") || cat.includes("JOB")) { occasionEmoji = "💼"; occasionHeader = "Congratulations on Your Promotion"; }
+  else if (cat.includes("VALENTINE")) { occasionEmoji = "❤️"; occasionHeader = "Happy Valentine's Day"; }
+  else if (cat.includes("BABY") || cat.includes("NEW_BORN")) { occasionEmoji = "👶"; occasionHeader = "Warm Welcome to the Little Angel"; }
+  else if (cat.includes("HOME") || cat.includes("HOUSEWARMING")) { occasionEmoji = "🏡"; occasionHeader = "Happy Housewarming"; }
+  else if (cat.includes("FRIENDSHIP")) { occasionEmoji = "🤝"; occasionHeader = "Happy Friendship Day"; }
+  else if (cat.includes("GET_WELL")) { occasionEmoji = "🩹"; occasionHeader = "Wishing You a Speedy Recovery"; }
+  else if (cat.includes("THANK_YOU")) { occasionEmoji = "🙏"; occasionHeader = "A Heartfelt Thank You"; }
+  else if (cat.includes("DIWALI")) { occasionEmoji = "🪔"; occasionHeader = "Happy Diwali"; }
+  else if (cat.includes("CHRISTMAS")) { occasionEmoji = "🎄"; occasionHeader = "Merry Christmas"; }
 
-  const smsText = `🎉 ${occasionHeader}, ${recipientName}! ${message} - From ${senderName}${senderContactInfo ? ` (${senderContactInfo})` : ""}. Delivered on time via DearDates ✨`;
+  const senderContactInfo = senderPhone || senderEmail || "";
+  const smsText = `${occasionEmoji} ${occasionHeader}, ${recipientName}! ${message} — With warm love, ${senderName}${senderContactInfo ? ` (${senderContactInfo})` : ""}`;
 
   // 1. Resolve Credentials (Check params -> Check process.env -> Fallback to Supabase DB)
   let token = bdSmsToken || process.env.GREENWEB_SMS_TOKEN || process.env.BD_SMS_TOKEN;
